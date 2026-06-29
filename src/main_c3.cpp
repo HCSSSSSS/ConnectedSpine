@@ -3,6 +3,7 @@
 #include <esp_now.h>
 #include <esp_wifi.h>
 #include <Wire.h>
+#include <math.h>
 #include <Adafruit_BNO08x.h>
 #include <Adafruit_DRV2605.h>
 #include "config.h"
@@ -18,19 +19,19 @@ S3ToC3Packet recvPacket;
 unsigned long lastSendTime = 0;
 
 float curPitch = 0, curRoll = 0, curYaw = 0;
-
-// 震动请求标志：回调里只置 true，loop 里执行
 volatile bool vibrationRequested = false;
 
-void onDataSent(const wifi_tx_info_t *info, esp_now_send_status_t status) {}
+void onDataSent(const wifi_tx_info_t *info, esp_now_send_status_t status) {
+  Serial.print("send: ");
+  Serial.println(status == ESP_NOW_SEND_SUCCESS ? "OK" : "FAIL");
+}
 
 void onDataRecv(const esp_now_recv_info_t *info, const uint8_t *data, int len) {
   if (len != sizeof(S3ToC3Packet)) return;
   memcpy(&recvPacket, data, sizeof(recvPacket));
-  // 只处理发给本节点或广播(0)的命令
   if (recvPacket.targetNodeId != NODE_ID && recvPacket.targetNodeId != 0) return;
   if (recvPacket.command == 1) {
-    vibrationRequested = true;   // 只置标志，不在回调里碰 I2C
+    vibrationRequested = true;
   }
 }
 
@@ -48,25 +49,38 @@ void setupESPNow() {
   peer.encrypt = false;
   if (esp_now_add_peer(&peer) != ESP_OK) { Serial.println("add peer FAIL"); while(1) delay(1000); }
   Serial.println("C3 ESP-NOW ready");
+  uint8_t ch; wifi_second_chan_t sec;
+  esp_wifi_get_channel(&ch, &sec);
+  Serial.printf("C3 channel: %d\n", ch);
 }
 
 bool setupIMU() {
-  Wire.begin(D4, D5);        // I2C 在这里初始化一次，DRV 复用同一个 Wire
+  Wire.begin(D4, D5);
   Wire.setClock(400000);
-  if (bno08x.begin_I2C(0x4A, &Wire)) {
-    Serial.println("BNO085 found at 0x4A");
-  } else if (bno08x.begin_I2C(0x4B, &Wire)) {
-    Serial.println("BNO085 found at 0x4B");
-  } else {
-    Serial.println("BNO085 not found!");
-    return false;
+  delay(100);                      // 给 BNO085 上电稳定时间
+
+  for (int attempt = 0; attempt < 5; attempt++) {
+    if (bno08x.begin_I2C(0x4A, &Wire)) {
+      Serial.println("BNO085 found at 0x4A");
+      if (!bno08x.enableReport(SH2_GAME_ROTATION_VECTOR)) {
+        Serial.println("enableReport FAIL"); return false;
+      }
+      Serial.println("BNO085 game rotation vector enabled");
+      return true;
+    }
+    if (bno08x.begin_I2C(0x4B, &Wire)) {
+      Serial.println("BNO085 found at 0x4B");
+      if (!bno08x.enableReport(SH2_GAME_ROTATION_VECTOR)) {
+        Serial.println("enableReport FAIL"); return false;
+      }
+      Serial.println("BNO085 game rotation vector enabled");
+      return true;
+    }
+    Serial.printf("BNO085 init retry %d...\n", attempt+1);
+    delay(200);
   }
-  if (!bno08x.enableReport(SH2_ROTATION_VECTOR)) {
-    Serial.println("enableReport FAIL");
-    return false;
-  }
-  Serial.println("BNO085 rotation vector enabled");
-  return true;
+  Serial.println("BNO085 not found after retries!");
+  return false;
 }
 
 bool setupHaptic() {
@@ -98,7 +112,7 @@ void quatToEuler(float qi, float qj, float qk, float qr,
 void setup() {
   Serial.begin(115200);
   delay(2000);
-  Serial.println("=== C3 IMU+HAPTIC (PIO) ===");
+  Serial.println("=== C3 IMU+HAPTIC (GRV) ===");
   Serial.printf("NODE_ID=%d\n", NODE_ID);
   if (!setupIMU())    { while(1) delay(1000); }
   if (!setupHaptic()) { while(1) delay(1000); }
@@ -106,24 +120,21 @@ void setup() {
 }
 
 void loop() {
-  // 1) 读 IMU
-  if (bno08x.wasReset()) bno08x.enableReport(SH2_ROTATION_VECTOR);
+  if (bno08x.wasReset()) bno08x.enableReport(SH2_GAME_ROTATION_VECTOR);
   if (bno08x.getSensorEvent(&sensorValue)) {
-    if (sensorValue.sensorId == SH2_ROTATION_VECTOR) {
-      quatToEuler(sensorValue.un.rotationVector.i, sensorValue.un.rotationVector.j,
-                  sensorValue.un.rotationVector.k, sensorValue.un.rotationVector.real,
+    if (sensorValue.sensorId == SH2_GAME_ROTATION_VECTOR) {
+      quatToEuler(sensorValue.un.gameRotationVector.i, sensorValue.un.gameRotationVector.j,
+                  sensorValue.un.gameRotationVector.k, sensorValue.un.gameRotationVector.real,
                   curPitch, curRoll, curYaw);
     }
   }
 
-  // 2) 处理震动请求（在 loop 里碰 I2C，不在回调里）
   if (vibrationRequested) {
     vibrationRequested = false;
     Serial.printf("C3 N%d VIBRATE\n", NODE_ID);
     doVibrate();
   }
 
-  // 3) 定时发姿态
   if (millis() - lastSendTime >= SEND_INTERVAL_MS) {
     lastSendTime = millis();
     sendPacket.nodeId    = NODE_ID;

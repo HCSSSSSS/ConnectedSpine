@@ -3,6 +3,7 @@
 #include <esp_now.h>
 #include <esp_wifi.h>
 #include <Wire.h>
+#include <math.h>
 #include <Adafruit_BNO08x.h>
 #include <Adafruit_DRV2605.h>
 #include "config.h"
@@ -15,29 +16,38 @@ Adafruit_DRV2605 drv;
 uint8_t broadcastAddress[] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 S3ToC3Packet sendPacket;
 
-// ---- 各节点最新绝对姿态 ----
-// 索引 0=Chest(S3自己)  1=Node1  2=Node2  3=Node3
+// 各节点最新绝对姿态  0=Chest 1=Head 2=WaistL 3=WaistR
 volatile float curP[4] = {0}, curR[4] = {0}, curY[4] = {0};
-volatile uint32_t lastSeen[4] = {0};   // 最近收到时间(对C3)；Chest一直在线
+volatile uint32_t lastSeen[4] = {0};
 volatile bool online[4] = {false,false,false,false};
 
-// ---- 零点参考 ----
 float zeroP[4] = {0}, zeroR[4] = {0}, zeroY[4] = {0};
 bool  zeroSaved[4] = {false,false,false,false};
 
-unsigned long lastVibrate[4] = {0,0,0,0};   // 每节点独立 cooldown 时间戳
-bool nodeBad[4] = {false,false,false,false};   // 每节点当前姿态状态（滞回用）
+// 分轴滞回状态
+bool pitchBad[4] = {false,false,false,false};
+bool rollBad[4]  = {false,false,false,false};
+unsigned long lastVibrate[4] = {0,0,0,0};
 
-// ---- 校准状态 ----
-#define CALIB_DELAY_MS 8000
+// 校准（纯按钮触发）
 bool calibrated = false;
-unsigned long bootTime = 0;
 unsigned long lastPrint = 0;
 
+// 按钮去抖
+int lastButtonState = HIGH;
+int lastButtonReading = HIGH;
+unsigned long lastDebounceTime = 0;
+
 const char* nodeName(int i) {
-  switch(i){ case 0:return "Chest"; case 1:return "Node1";
-             case 2:return "Node2"; case 3:return "Node3"; }
+  switch(i){ case 0:return "Chest"; case 1:return "Head";
+             case 2:return "WaistL"; case 3:return "WaistR"; }
   return "?";
+}
+
+// 节点是否活跃：Chest 始终在线；C3 需在线且数据新鲜
+bool nodeActive(int i) {
+  if (i == 0) return true;
+  return online[i] && (millis() - lastSeen[i] <= NODE_TIMEOUT_MS);
 }
 
 void onDataSent(const wifi_tx_info_t *info, esp_now_send_status_t status) {}
@@ -72,12 +82,30 @@ void setupESPNow() {
 bool setupIMU() {
   Wire.begin(D4, D5);
   Wire.setClock(400000);
-  if (bno08x.begin_I2C(0x4A, &Wire))      Serial.println("Chest BNO085 at 0x4A");
-  else if (bno08x.begin_I2C(0x4B, &Wire)) Serial.println("Chest BNO085 at 0x4B");
-  else { Serial.println("Chest BNO085 not found!"); return false; }
-  if (!bno08x.enableReport(SH2_ROTATION_VECTOR)) { Serial.println("enableReport FAIL"); return false; }
-  Serial.println("Chest BNO085 enabled");
-  return true;
+  delay(100);
+
+  for (int attempt = 0; attempt < 5; attempt++) {
+    if (bno08x.begin_I2C(0x4A, &Wire)) {
+      Serial.println("Chest BNO085 found at 0x4A");
+      if (!bno08x.enableReport(SH2_GAME_ROTATION_VECTOR)) {
+        Serial.println("enableReport FAIL"); return false;
+      }
+      Serial.println("Chest BNO085 game rotation vector enabled");
+      return true;
+    }
+    if (bno08x.begin_I2C(0x4B, &Wire)) {
+      Serial.println("Chest BNO085 found at 0x4B");
+      if (!bno08x.enableReport(SH2_GAME_ROTATION_VECTOR)) {
+        Serial.println("enableReport FAIL"); return false;
+      }
+      Serial.println("Chest BNO085 game rotation vector enabled");
+      return true;
+    }
+    Serial.printf("Chest BNO085 init retry %d...\n", attempt+1);
+    delay(200);
+  }
+  Serial.println("Chest BNO085 not found after retries!");
+  return false;
 }
 
 bool setupHaptic() {
@@ -103,7 +131,6 @@ void quatToEuler(float qi, float qj, float qk, float qr,
   yaw   = atan2(2.0f*(qj*qk+qi*qr),(-sqi-sqj+sqk+sqr))*180.0f/PI;
 }
 
-// yaw 环形差值归一化
 float angleDiff(float current, float zero) {
   float diff = current - zero;
   if (diff > 180.0f)  diff -= 360.0f;
@@ -111,18 +138,36 @@ float angleDiff(float current, float zero) {
   return diff;
 }
 
+void getThresholds(int i, float &pBad, float &pRec, float &rBad, float &rRec) {
+  if (i == 1) {                    // Head
+    pBad=HEAD_PITCH_BAD;  pRec=HEAD_PITCH_RECOVER;
+    rBad=HEAD_ROLL_BAD;   rRec=HEAD_ROLL_RECOVER;
+  } else if (i == 0) {             // Chest
+    pBad=CHEST_PITCH_BAD; pRec=CHEST_PITCH_RECOVER;
+    rBad=CHEST_ROLL_BAD;  rRec=CHEST_ROLL_RECOVER;
+  } else {                         // Waist
+    pBad=WAIST_PITCH_BAD; pRec=WAIST_PITCH_RECOVER;
+    rBad=WAIST_ROLL_BAD;  rRec=WAIST_ROLL_RECOVER;
+  }
+}
+
 void doCalibration() {
   for (int i = 0; i <= 3; i++) {
-    // Chest(0) 始终在线；C3 节点只对收到过数据的存零点
-    if (i == 0 || online[i]) {
+    if (nodeActive(i)) {
       zeroP[i] = curP[i];
       zeroR[i] = curR[i];
       zeroY[i] = curY[i];
       zeroSaved[i] = true;
+      pitchBad[i] = false;
+      rollBad[i]  = false;
+      lastVibrate[i] = millis();
       Serial.printf("%s zero saved | P %.1f R %.1f Y %.1f\n",
                     nodeName(i), curP[i], curR[i], curY[i]);
     } else {
-      Serial.printf("%s offline, zero skipped\n", nodeName(i));
+      zeroSaved[i] = false;
+      pitchBad[i] = false;
+      rollBad[i]  = false;
+      Serial.printf("%s offline or stale, zero skipped\n", nodeName(i));
     }
   }
   Serial.println("=== Calibration complete ===");
@@ -131,64 +176,77 @@ void doCalibration() {
 void setup() {
   Serial.begin(115200);
   delay(2000);
-  Serial.println("=== S3 CALIBRATION TEST (PIO) ===");
+  Serial.println("=== S3 FULL SYSTEM (GRV) ===");
   if (!setupIMU())    { while(1) delay(1000); }
-  if (!setupHaptic()) { while(1) delay(1000); }   // 胸口无DRV则改成 setupHaptic();
+  if (!setupHaptic()) { while(1) delay(1000); }
   setupESPNow();
-  online[0] = true;           // Chest 自己始终在线
-  bootTime = millis();
-  Serial.printf("[warmup] Chest P %.1f R %.1f Y %.1f | N1:%d N2:%d N3:%d\n",
-              curP[0], curR[0], curY[0],
-              online[1], online[2], online[3]);
+  pinMode(CAL_BUTTON_PIN, INPUT_PULLUP);
+  online[0] = true;
+  Serial.println("Waiting for button calibration...");
 }
 
 void loop() {
-  // 1) 读胸口 IMU（存到索引0）
-  if (bno08x.wasReset()) bno08x.enableReport(SH2_ROTATION_VECTOR);
+  // ===== 按钮检测：按下校准 =====
+  int reading = digitalRead(CAL_BUTTON_PIN);
+  if (reading != lastButtonReading) {
+    lastDebounceTime = millis();
+  }
+  if (millis() - lastDebounceTime > BUTTON_DEBOUNCE_MS) {
+    if (reading != lastButtonState) {
+      lastButtonState = reading;
+      if (lastButtonState == LOW) {
+        Serial.println(">>> BUTTON: Calibrating...");
+        doCalibration();
+        calibrated = true;
+      }
+    }
+  }
+  lastButtonReading = reading;
+
+  // ===== 读胸口 IMU =====
+  if (bno08x.wasReset()) bno08x.enableReport(SH2_GAME_ROTATION_VECTOR);
   if (bno08x.getSensorEvent(&sensorValue)) {
-    if (sensorValue.sensorId == SH2_ROTATION_VECTOR) {
+    if (sensorValue.sensorId == SH2_GAME_ROTATION_VECTOR) {
       float p,r,y;
-      quatToEuler(sensorValue.un.rotationVector.i, sensorValue.un.rotationVector.j,
-                  sensorValue.un.rotationVector.k, sensorValue.un.rotationVector.real, p,r,y);
+      quatToEuler(sensorValue.un.gameRotationVector.i, sensorValue.un.gameRotationVector.j,
+                  sensorValue.un.gameRotationVector.k, sensorValue.un.gameRotationVector.real, p,r,y);
       curP[0]=p; curR[0]=r; curY[0]=y;
     }
   }
 
-  // 2) 8 秒到点，执行一次校准
-  if (!calibrated && (millis() - bootTime >= CALIB_DELAY_MS)) {
-    doCalibration();
-    calibrated = true;
-  }
-
-  // 3) 定时打印
+  // ===== 定时打印 / 判断 =====
   if (millis() - lastPrint >= SEND_INTERVAL_MS) {
     lastPrint = millis();
     if (!calibrated) {
-      // 校准前：打印绝对值，方便看 IMU 是否收敛稳定
-      Serial.printf("[warmup] Chest P %.1f R %.1f Y %.1f\n", curP[0], curR[0], curY[0]);
+      // 未校准：等待按钮，显示在线节点帮助判断何时可按
+      Serial.printf("[waiting] Press button to calibrate | Chest P %.1f R %.1f Y %.1f | N1:%d N2:%d N3:%d\n",
+                    curP[0], curR[0], curY[0],
+                    nodeActive(1), nodeActive(2), nodeActive(3));
     } else {
       for (int i = 0; i <= 3; i++) {
-        if (zeroSaved[i]) {
+        if (zeroSaved[i] && nodeActive(i)) {
           float dP = angleDiff(curP[i], zeroP[i]);
           float dR = angleDiff(curR[i], zeroR[i]);
           float dY = angleDiff(curY[i], zeroY[i]);
 
-          // 取 pitch/roll 里偏差更大的那个做滞回判断
-          float maxDev = fmax(fabs(dP), fabs(dR));
+          float pBad, pRec, rBad, rRec;
+          getThresholds(i, pBad, pRec, rBad, rRec);
 
-          // 滞回：NORMAL->BAD 用 20，BAD->NORMAL 用 15，中间保持
-          if (!nodeBad[i] && maxDev > BAD_THRESHOLD) {
-            nodeBad[i] = true;
-          } else if (nodeBad[i] && maxDev < RECOVER_THRESHOLD) {
-            nodeBad[i] = false;
-          }
-          // 15~20 之间：nodeBad[i] 保持不变
+          if (!pitchBad[i] && fabs(dP) > pBad)      pitchBad[i] = true;
+          else if (pitchBad[i] && fabs(dP) < pRec)  pitchBad[i] = false;
 
-          Serial.printf("%s | dP %6.1f | dR %6.1f | dY %6.1f | %s\n",
+          if (!rollBad[i] && fabs(dR) > rBad)       rollBad[i] = true;
+          else if (rollBad[i] && fabs(dR) < rRec)   rollBad[i] = false;
+
+          bool nodeIsBad = pitchBad[i] || rollBad[i];
+
+          Serial.printf("%s | dP %6.1f | dR %6.1f | dY %6.1f | %s%s\n",
                         nodeName(i), dP, dR, dY,
-                        nodeBad[i] ? "BAD" : "NORMAL");
+                        nodeIsBad ? "BAD" : "NORMAL",
+                        nodeIsBad ? (pitchBad[i] && rollBad[i] ? " (P+R)" :
+                                     pitchBad[i] ? " (P)" : " (R)") : "");
 
-          if (nodeBad[i] && (millis() - lastVibrate[i] >= VIBRATION_COOLDOWN_MS)) {
+          if (nodeIsBad && (millis() - lastVibrate[i] >= VIBRATION_COOLDOWN_MS)) {
             lastVibrate[i] = millis();
             if (i == 0) {
               Serial.println(">>> Chest VIBRATE (local)");
@@ -200,6 +258,11 @@ void loop() {
               esp_now_send(broadcastAddress, (uint8_t*)&sendPacket, sizeof(sendPacket));
             }
           }
+        } else if (zeroSaved[i] && !nodeActive(i)) {
+          // 曾校准但掉线：提示、清状态、不判断不震动
+          Serial.printf("%s | (offline)\n", nodeName(i));
+          pitchBad[i] = false;
+          rollBad[i]  = false;
         }
       }
       Serial.println("----");
