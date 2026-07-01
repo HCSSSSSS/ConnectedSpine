@@ -246,12 +246,16 @@ void doLocalVibrate()
 }
 
 void quatToEuler(float qi, float qj, float qk, float qr,
-                 float &pitch, float &roll, float &yaw)
-{
-  float sqr = qr * qr, sqi = qi * qi, sqj = qj * qj, sqk = qk * qk;
-  roll = atan2(2.0f * (qi * qj + qk * qr), (sqi - sqj - sqk + sqr)) * 180.0f / PI;
-  pitch = asin(-2.0f * (qi * qk - qj * qr) / (sqi + sqj + sqk + sqr)) * 180.0f / PI;
-  yaw = atan2(2.0f * (qj * qk + qi * qr), (-sqi - sqj + sqk + sqr)) * 180.0f / PI;
+                 float &pitch, float &roll, float &yaw) {
+  // 设备"上"方向（重力）在机体坐标系下的分量
+  float gx = 2.0f * (qi*qk - qr*qj);
+  float gy = 2.0f * (qr*qi + qj*qk);
+  float gz = qr*qr - qi*qi - qj*qj + qk*qk;
+  // 两个分量都用 atan2(_, sqrt(...))：范围 ±90°，全程连续，无奇点
+  // 平放时 gx=gy=0 → pitch=roll=0；放平必回 0，BAD 一定能解除
+  pitch = atan2f(gx, sqrtf(gy*gy + gz*gz)) * 180.0f / PI;   // 前后倾
+  roll  = atan2f(gy, sqrtf(gx*gx + gz*gz)) * 180.0f / PI;   // 左右倾
+  yaw   = 0.0f;   // 重力法给不出偏航；你本来就没判 yaw，置 0 即可
 }
 
 float angleDiff(float current, float zero)
