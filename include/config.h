@@ -13,7 +13,7 @@
 // ===== 节点标识 =====
 // C3 烧录时改这里：1=HEAD  2=LEFT_WAIST(WaistL)  3=RIGHT_WAIST(WaistR)
 // S3（胸口/主节点）固定为 index 0，不读取本宏，留默认即可
-#define NODE_ID 3
+#define NODE_ID 1
 
 // ===== 通信 =====
 #define ESPNOW_CHANNEL 1 // 两端必须一致，范围 1..13

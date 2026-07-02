@@ -1,136 +1,658 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Connected Spine</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --navy:#0A1428;
-    --navy-soft:#101d36;
-    --white:#FFFFFF;
-    --cyan:#34C8F0;
-    --cyan-light:#7DD4F2;
-    --muted:#8aa0c0;
-  }
-  *{margin:0;padding:0;box-sizing:border-box;}
-  html{scroll-behavior:smooth;}
-  body{
-    background:var(--navy);
-    color:var(--white);
-    font-family:'Inter',system-ui,sans-serif;
-    line-height:1.6;
-    -webkit-font-smoothing:antialiased;
-    min-height:100vh;
-  }
-  .wrap{max-width:760px;margin:0 auto;padding:0 24px;}
-  header{text-align:center;padding:72px 0 40px;}
-  .logo{width:120px;height:120px;margin:0 auto 28px;display:block;}
-  h1{
-    font-family:'Sora',sans-serif;font-weight:700;
-    font-size:clamp(2rem,6vw,2.9rem);
-    letter-spacing:-0.02em;line-height:1.1;
-  }
-  .tagline{color:var(--cyan-light);font-size:clamp(1rem,2.5vw,1.15rem);margin-top:14px;font-weight:500;}
-  .video-section{padding:24px 0 16px;}
-  .video-frame{
-    position:relative;width:100%;aspect-ratio:16/9;
-    background:var(--navy-soft);
-    border:1px solid rgba(125,212,242,0.25);
-    border-radius:16px;overflow:hidden;
-    display:flex;align-items:center;justify-content:center;
-  }
-  .video-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}
-  .video-placeholder{text-align:center;padding:32px;color:var(--muted);}
-  .video-placeholder .play{
-    width:64px;height:64px;border-radius:50%;
-    border:2px solid var(--cyan);
-    display:flex;align-items:center;justify-content:center;
-    margin:0 auto 18px;
-  }
-  .video-placeholder .play::after{
-    content:"";border-style:solid;
-    border-width:11px 0 11px 18px;
-    border-color:transparent transparent transparent var(--cyan);
-    margin-left:4px;
-  }
-  .video-placeholder strong{color:var(--white);font-weight:600;display:block;margin-bottom:4px;}
-  .about{padding:44px 0 80px;}
-  .about h2{
-    font-family:'Sora',sans-serif;font-size:0.8rem;
-    text-transform:uppercase;letter-spacing:0.18em;
-    color:var(--cyan);margin-bottom:16px;font-weight:600;
-  }
-  .about p{font-size:1.05rem;color:#dce6f5;margin-bottom:18px;}
-  .meta{
-    margin-top:36px;padding-top:24px;
-    border-top:1px solid rgba(138,160,192,0.2);
-    display:flex;flex-wrap:wrap;gap:28px;
-  }
-  .meta div{min-width:120px;}
-  .meta .k{font-size:0.72rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--muted);margin-bottom:4px;}
-  .meta .v{font-weight:500;color:var(--white);}
-  footer{text-align:center;padding:28px 0 48px;color:var(--muted);font-size:0.85rem;}
-  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto;}}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connected Spine — Wearable Posture Monitoring</title>
+  <meta name="description" content="A multi-node wearable posture feedback system with local vibration reminders.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #0A1017;
+      --panel: #0F1822;
+      --panel-2: #121D29;
+      --line: #1C2B3A;
+      --line-soft: #16222F;
+      --ink: #E9F1F7;
+      --muted: #8CA1B4;
+      --faint: #5A6E80;
+      --cyan: #38E1EA;
+      --cyan-dim: #0E7490;
+      --cyan-glow: rgba(56, 225, 234, .14);
+      --radius: 14px;
+      --maxw: 960px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'IBM Plex Sans', system-ui, sans-serif;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a {
+      color: var(--cyan);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--cyan);
+      outline-offset: 3px;
+      border-radius: 4px;
+    }
+
+    /* ===== Hero ===== */
+    .hero {
+      max-width: var(--maxw);
+      margin: 0 auto;
+      padding: 34px 24px 10px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .hero .mark {
+      flex: 0 0 auto;
+      display: block;
+    }
+
+    .hero h1 {
+      font-family: 'Chakra Petch', sans-serif;
+      font-weight: 700;
+      font-size: clamp(1.25rem, 3.4vw, 1.7rem);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .hero h1 .lit {
+      color: var(--cyan);
+    }
+
+    .hero .tag {
+      margin-left: auto;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: .72rem;
+      color: var(--faint);
+      letter-spacing: .04em;
+      text-align: right;
+    }
+
+    .hero-sub {
+      max-width: var(--maxw);
+      margin: 0 auto;
+      padding: 8px 24px 0;
+      color: var(--muted);
+      font-size: .95rem;
+    }
+
+    @media (max-width:640px) {
+      .hero .tag {
+        display: none;
+      }
+    }
+
+    /* ===== Main frame + spine rail ===== */
+    .frame {
+      max-width: var(--maxw);
+      margin: 0 auto;
+      padding: 28px 24px 0;
+      display: grid;
+      grid-template-columns: 34px 1fr;
+      gap: 22px;
+      position: relative;
+    }
+
+    .frame::before {
+      content: "";
+      position: absolute;
+      left: 41px;
+      top: 32px;
+      bottom: 18px;
+      width: 2px;
+      background: linear-gradient(to bottom, var(--cyan-dim), var(--line) 72%, transparent);
+      border-radius: 2px;
+    }
+
+    section {
+      display: grid;
+      grid-template-columns: subgrid;
+      grid-column: 1 / -1;
+      padding-bottom: 72px;
+    }
+
+    section .node {
+      width: 22px;
+      height: 30px;
+      margin: 4px auto 0;
+      border-radius: 7px;
+      background: var(--panel-2);
+      border: 1.5px solid var(--line);
+      position: relative;
+      z-index: 1;
+    }
+
+    section:target .node,
+    section .node.active {
+      border-color: var(--cyan);
+      background: var(--cyan-glow);
+      box-shadow: 0 0 14px var(--cyan-glow);
+    }
+
+    @media (max-width:640px) {
+      .frame {
+        grid-template-columns: 1fr;
+        padding-top: 18px;
+      }
+
+      .frame::before,
+      section .node {
+        display: none;
+      }
+
+      section {
+        grid-template-columns: 1fr;
+        padding-bottom: 56px;
+      }
+    }
+
+    /* ===== Typography ===== */
+    .eyebrow {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: .72rem;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      margin-bottom: 10px;
+    }
+
+    .eyebrow .idx {
+      color: var(--faint);
+    }
+
+    h2 {
+      font-family: 'Chakra Petch', sans-serif;
+      font-weight: 600;
+      font-size: clamp(1.15rem, 2.6vw, 1.45rem);
+      letter-spacing: .02em;
+      margin-bottom: 6px;
+    }
+
+    .sub {
+      color: var(--muted);
+      font-size: .92rem;
+      max-width: 60ch;
+      margin-bottom: 22px;
+    }
+
+    /* ===== Video ===== */
+    .video-shell {
+      position: relative;
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: 0 0 0 1px rgba(56, 225, 234, .05), 0 24px 60px -30px rgba(0, 0, 0, .8);
+    }
+
+    .video-shell video {
+      display: block;
+      width: 100%;
+      aspect-ratio: 16/9;
+      background: #05090D;
+    }
+
+    .video-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 14px;
+      border-top: 1px solid var(--line-soft);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: .72rem;
+      color: var(--faint);
+    }
+
+    @media (max-width:640px) {
+      .video-meta {
+        flex-direction: column;
+        gap: 4px;
+      }
+    }
+
+    /* ===== How it works ===== */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    @media (max-width:760px) {
+      .steps {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .step {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      padding: 16px;
+    }
+
+    .step .num {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: .68rem;
+      letter-spacing: .1em;
+      color: var(--cyan);
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .step h3 {
+      font-family: 'Chakra Petch', sans-serif;
+      font-weight: 600;
+      font-size: .95rem;
+      margin-bottom: 4px;
+    }
+
+    .step p {
+      font-size: .82rem;
+      color: var(--muted);
+    }
+
+    /* ===== Data dashboard ===== */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    @media (max-width:760px) {
+      .stat-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .stat {
+      border: 1px dashed var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, var(--panel), #0B131C);
+      padding: 18px 18px 16px;
+      min-height: 112px;
+    }
+
+    .stat .label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: .68rem;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--faint);
+      margin-bottom: 10px;
+    }
+
+    .stat .value {
+      font-family: 'Chakra Petch', sans-serif;
+      font-weight: 700;
+      font-size: 1.75rem;
+      color: var(--muted);
+    }
+
+    .stat .value .unit {
+      font-size: .85rem;
+      color: var(--faint);
+      font-weight: 500;
+    }
+
+    .panel-wide {
+      border: 1px dashed var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      padding: 18px;
+    }
+
+    .panel-wide .label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: .68rem;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--faint);
+      margin-bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 6px;
+      height: 88px;
+    }
+
+    .bars span {
+      flex: 1;
+      background: linear-gradient(to top, var(--line-soft), var(--line));
+      border-radius: 4px 4px 0 0;
+      min-height: 8%;
+    }
+
+    .bar-axis {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: .62rem;
+      color: var(--faint);
+    }
+
+    .reserved-pill {
+      display: inline-block;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: .66rem;
+      letter-spacing: .08em;
+      color: var(--cyan);
+      border: 1px solid var(--cyan-dim);
+      border-radius: 999px;
+      padding: 2px 10px;
+      background: var(--cyan-glow);
+      vertical-align: middle;
+    }
+
+    /* ===== Personal feedback plan ===== */
+    .plan-stack {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .plan-card {
+      border: 1px dashed var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      gap: 14px;
+      align-items: start;
+      min-height: 120px;
+    }
+
+    .plan-card .icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      display: grid;
+      place-items: center;
+      color: var(--cyan-dim);
+    }
+
+    .plan-card h3 {
+      font-family: 'Chakra Petch', sans-serif;
+      font-weight: 600;
+      font-size: .98rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .plan-card p {
+      font-size: .84rem;
+      color: var(--faint);
+    }
+
+    @media (max-width:520px) {
+      .plan-card {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ===== Footer ===== */
+    footer {
+      border-top: 1px solid var(--line-soft);
+      margin-top: 8px;
+    }
+
+    .foot-inner {
+      max-width: var(--maxw);
+      margin: 0 auto;
+      padding: 22px 24px 30px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 24px;
+      justify-content: space-between;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: .72rem;
+      color: var(--faint);
+    }
+
+    @media (prefers-reduced-motion:reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+
+      * {
+        transition: none !important;
+        animation: none !important;
+      }
+    }
+  </style>
 </head>
+
 <body>
-  <div class="wrap">
-    <header>
-      <svg class="logo" viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg" aria-label="The Connected Spine logo">
-        <g transform="translate(300,300)">
-          <path d="M 92 -175 C 52 -200 -55 -200 -85 -150 C -112 -103 -72 -62 -18 -38 C 44 -10 96 28 74 86 C 50 142 -55 148 -100 120"
-                fill="none" stroke="#FFFFFF" stroke-width="19" stroke-linecap="round"/>
-          <g fill="#34C8F0">
-            <rect x="-30" y="-110" width="50" height="22" rx="8" transform="rotate(18 -5 -99)"/>
-            <rect x="-30" y="-74" width="54" height="22" rx="8" transform="rotate(10 -3 -63)"/>
-            <rect x="-30" y="-38" width="56" height="22" rx="8" transform="rotate(2 -2 -27)"/>
-            <rect x="-28" y="-2" width="56" height="22" rx="8" transform="rotate(-8 0 9)"/>
-            <rect x="-22" y="34" width="54" height="22" rx="8" transform="rotate(-18 5 45)"/>
-            <rect x="-12" y="70" width="50" height="22" rx="8" transform="rotate(-26 13 81)"/>
-          </g>
-          <path d="M 8 -118 C 50 -68 70 -10 40 70" fill="none" stroke="#7DD4F2" stroke-width="7" stroke-linecap="round"/>
-        </g>
-      </svg>
-      <h1>The Connected Spine</h1>
-      <p class="tagline">A wearable that senses your posture and nudges you back</p>
-    </header>
 
-    <section class="video-section">
-      <div class="video-frame">
-        <!-- ============================================================
-             TO ADD YOUR VIDEO (do this after you upload to YouTube):
-             1. Upload the demo video to YouTube (set visibility to "Unlisted").
-             2. Copy the video ID from the URL - the part after "v=".
-                e.g. for youtube.com/watch?v=ABC123xyz the ID is ABC123xyz
-             3. DELETE the entire <div class="video-placeholder">...</div> block.
-             4. UNCOMMENT the <iframe> line below and replace BOTH copies of
-                VIDEO_ID (one in the iframe, one in the fallback link).
-        ============================================================ -->
-        <div class="video-placeholder">
-          <div class="play"></div>
-          <strong>Demo video coming soon</strong>
-          <span>A short walkthrough of the device in action.</span>
+  <!-- ===== Hero: logo + project name ===== -->
+  <header class="hero">
+    <!-- Placeholder logo. Replace this SVG with <img class="mark" src="logo.svg" alt="Connected Spine logo"> if needed. -->
+    <svg class="mark" width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+      <path d="M27 5 C14 8, 30 16, 20 21 C10 26, 26 32, 13 36" stroke="#E9F1F7" stroke-width="3"
+        stroke-linecap="round" />
+      <circle cx="27" cy="5" r="2.6" fill="#38E1EA" />
+      <circle cx="21" cy="13" r="2.6" fill="#38E1EA" />
+      <circle cx="20" cy="21" r="2.6" fill="#38E1EA" />
+      <circle cx="19" cy="29" r="2.6" fill="#38E1EA" />
+      <circle cx="13" cy="36" r="2.6" fill="#38E1EA" />
+    </svg>
+
+    <h1>Connected <span class="lit">Spine</span></h1>
+
+    <span class="tag">MULTI-NODE WEARABLE<br>POSTURE FEEDBACK SYSTEM</span>
+  </header>
+
+  <p class="hero-sub">
+    A multi-node wearable that turns posture changes into local vibration feedback.
+  </p>
+
+  <div class="frame">
+
+    <!-- ===== 1. Demo video ===== -->
+    <section id="demo">
+      <div class="node active" aria-hidden="true"></div>
+      <div>
+        <p class="eyebrow"><span class="idx">N0 /</span> Demo</p>
+        <h2>See it working</h2>
+        <p class="sub">
+          A one-minute walkthrough showing how the system detects posture changes at different body areas and gives
+          vibration feedback at the area that needs attention.
+        </p>
+
+        <div class="video-shell">
+          <!-- Replace demo.mp4 with your final video file. Keep the file in the same folder as index.html. -->
+          <video controls preload="metadata" poster="" src="demo.mp4">
+            Your browser does not support embedded video.
+          </video>
+
+          <div class="video-meta">
+            <span>DEMO_V1.MP4 · 60s</span>
+            <span>XIAO ESP32-S3 + 3× C3 · BNO085 · LRA</span>
+          </div>
         </div>
-        <!-- <iframe src="https://www.youtube.com/embed/VIDEO_ID" title="Connected Spine demo" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe> -->
       </div>
     </section>
 
-    <section class="about">
-      <h2>About the project</h2>
-      <p>Many of us spend hours hunched over desks or phones, slowly straining our backs and necks without noticing. The Connected Spine is a wearable system that gently watches your posture in real time.</p>
-      <p>Small sensors worn along the back - at the neck, upper back, and waist - detect when you slouch or lean too far. When your posture drifts beyond a set range, the device responds with a soft buzz at the area that needs attention, reminding you to adjust your posture. It is a quiet, personal nudge toward better posture awareness throughout the day.</p>
-      <div class="meta">
-        <div><div class="k">Type</div><div class="v">Wearable posture monitor</div></div>
-        <div><div class="k">Sensing points</div><div class="v">Neck - Upper Back - Waist</div></div>
-        <div><div class="k">Feedback</div><div class="v">Targeted haptic buzz</div></div>
+    <!-- ===== 2. How it works ===== -->
+    <section id="how">
+      <div class="node" aria-hidden="true"></div>
+      <div>
+        <p class="eyebrow"><span class="idx">N1 /</span> How it works</p>
+        <h2>From posture change to local feedback</h2>
+        <p class="sub">
+          The wearable uses separate nodes to sense posture changes at different body areas. When one area moves beyond
+          a set range, the system identifies the location and sends a gentle vibration cue to that part of the body.
+        </p>
+
+        <div class="steps">
+          <div class="step">
+            <span class="num">STEP 1</span>
+            <h3>Sense</h3>
+            <p>Each node tracks the tilt of its body area independently.</p>
+          </div>
+
+          <div class="step">
+            <span class="num">STEP 2</span>
+            <h3>Detect</h3>
+            <p>The chest node compares readings against a set range and locates where posture drifts.</p>
+          </div>
+
+          <div class="step">
+            <span class="num">STEP 3</span>
+            <h3>Feedback</h3>
+            <p>A gentle vibration cue is sent to that specific node — no screen, no sound.</p>
+          </div>
+        </div>
       </div>
     </section>
 
-    <footer>Connected Environments Exhibition 2026</footer>
+    <!-- ===== 3. Posture data dashboard ===== -->
+    <section id="data">
+      <div class="node" aria-hidden="true"></div>
+      <div>
+        <p class="eyebrow"><span class="idx">N2 /</span> Posture data</p>
+        <h2>Posture data dashboard <span class="reserved-pill">RESERVED</span></h2>
+        <p class="sub">
+          Posture events logged from the chest node to Firebase Realtime Database. This panel will populate once the
+          data feed is connected.
+        </p>
+
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="label">Time within range</div>
+            <div class="value">--<span class="unit"> %</span></div>
+          </div>
+
+          <div class="stat">
+            <div class="label">Posture alerts today</div>
+            <div class="value">--</div>
+          </div>
+
+          <div class="stat">
+            <div class="label">Longest stable period</div>
+            <div class="value">--<span class="unit"> min</span></div>
+          </div>
+        </div>
+
+        <div class="panel-wide">
+          <div class="label">
+            <span>Posture alerts · last 12 h</span>
+            <span>UTC+1</span>
+          </div>
+
+          <div class="bars" aria-hidden="true">
+            <span style="height:22%"></span>
+            <span style="height:40%"></span>
+            <span style="height:15%"></span>
+            <span style="height:55%"></span>
+            <span style="height:30%"></span>
+            <span style="height:70%"></span>
+            <span style="height:45%"></span>
+            <span style="height:25%"></span>
+            <span style="height:60%"></span>
+            <span style="height:35%"></span>
+            <span style="height:18%"></span>
+            <span style="height:48%"></span>
+          </div>
+
+          <div class="bar-axis" aria-hidden="true">
+            <span>Now -12h</span>
+            <span>Now -8h</span>
+            <span>Now -4h</span>
+            <span>Now</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 4. Personal feedback plan ===== -->
+    <section id="plan">
+      <div class="node" aria-hidden="true"></div>
+      <div>
+        <p class="eyebrow"><span class="idx">N3 /</span> Personal plan</p>
+        <h2>Personal feedback plan <span class="reserved-pill">RESERVED</span></h2>
+        <p class="sub">
+          Recommendation cards generated from posture history — showing which body area drifts most and what adjustment
+          may help.
+        </p>
+
+        <div class="plan-stack">
+          <div class="plan-card">
+            <div class="icon">◔</div>
+            <div>
+              <h3>Pattern summary</h3>
+              <p>
+                Shows which sensing node drifts most often, which movement pattern appears repeatedly, and when posture
+                alerts are most likely to happen.
+              </p>
+            </div>
+          </div>
+
+          <div class="plan-card">
+            <div class="icon">↺</div>
+            <div>
+              <h3>Suggested adjustment</h3>
+              <p>
+                Provides one simple posture cue matched to the detected pattern, such as adjusting screen height,
+                relaxing the shoulders, or taking a short movement break.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </div>
+
+  <footer>
+    <div class="foot-inner">
+      <span>CONNECTED SPINE · CHAOSHUO HAN · 2026</span>
+      <span>UCL CASA · Connected Environments</span>
+      <span><a href="https://github.com/hcssssss/ConnectedSpine">GITHUB ↗</a></span>
+    </div>
+  </footer>
+
 </body>
+
 </html>
