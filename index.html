@@ -290,7 +290,7 @@
       gap: 12px;
       margin-bottom: 12px;
     }
- 
+
     @media (max-width:760px) {
       .stat-grid {
         grid-template-columns: 1fr;
@@ -405,24 +405,25 @@
       width: 34px;
       height: 34px;
       border-radius: 9px;
-      border: 1px solid var(--line);
+      border: 1px solid var(--cyan-dim);
       background: var(--panel-2);
       display: grid;
       place-items: center;
-      color: var(--cyan-dim);
+      color: var(--cyan);
     }
 
     .plan-card h3 {
       font-family: 'Chakra Petch', sans-serif;
       font-weight: 600;
-      font-size: .98rem;
-      color: var(--muted);
-      margin-bottom: 4px;
+      font-size: 1.05rem;
+      color: var(--ink);
+      margin-bottom: 6px;
     }
 
     .plan-card p {
-      font-size: .84rem;
-      color: var(--faint);
+      font-size: .95rem;
+      color: var(--muted);
+      line-height: 1.7;
     }
 
     @media (max-width:520px) {
@@ -552,26 +553,25 @@
       <div class="node" aria-hidden="true"></div>
       <div>
         <p class="eyebrow"><span class="idx">N2 /</span> Posture data</p>
-        <h2>Posture data dashboard <span class="reserved-pill">RESERVED</span></h2>
+        <h2>Posture data dashboard</h2>
         <p class="sub">
-          Posture events logged from the chest node to Firebase Realtime Database. This panel will populate once the
-          data feed is connected.
+          Live posture events logged from the wearable to Firebase Realtime Database.
         </p>
 
         <div class="stat-grid">
           <div class="stat">
             <div class="label">Time within range</div>
-            <div class="value">--<span class="unit"> %</span></div>
+            <div class="value" id="stat-inrange">--<span class="unit"> %</span></div>
           </div>
 
           <div class="stat">
             <div class="label">Posture alerts today</div>
-            <div class="value">--</div>
+            <div class="value" id="stat-alerts">--</div>
           </div>
 
           <div class="stat">
             <div class="label">Longest stable period</div>
-            <div class="value">--<span class="unit"> min</span></div>
+            <div class="value" id="stat-stable">--<span class="unit"> min</span></div>
           </div>
         </div>
 
@@ -581,7 +581,7 @@
             <span>UTC+1</span>
           </div>
 
-          <div class="bars" aria-hidden="true">
+          <div class="bars" id="bars" aria-hidden="true">
             <span style="height:22%"></span>
             <span style="height:40%"></span>
             <span style="height:15%"></span>
@@ -597,11 +597,19 @@
           </div>
 
           <div class="bar-axis" aria-hidden="true">
-            <span>Now -12h</span>
-            <span>Now -8h</span>
-            <span>Now -4h</span>
-            <span>Now</span>
+            <span id="ax-0"></span>
+            <span id="ax-1"></span>
+            <span id="ax-2"></span>
+            <span id="ax-3"></span>
           </div>
+        </div>
+
+        <div class="panel-wide" style="margin-top:12px">
+          <div class="label">
+            <span>Recent events</span>
+            <span id="evt-count"></span>
+          </div>
+          <div id="events" style="font-family:'IBM Plex Mono',monospace;font-size:.74rem;line-height:2"></div>
         </div>
       </div>
     </section>
@@ -611,7 +619,7 @@
       <div class="node" aria-hidden="true"></div>
       <div>
         <p class="eyebrow"><span class="idx">N3 /</span> Personal plan</p>
-        <h2>Personal feedback plan <span class="reserved-pill">RESERVED</span></h2>
+        <h2>Personal feedback plan</h2>
         <p class="sub">
           Recommendation cards generated from posture history — showing which body area drifts most and what adjustment
           may help.
@@ -622,9 +630,8 @@
             <div class="icon">◔</div>
             <div>
               <h3>Pattern summary</h3>
-              <p>
-                Shows which sensing node drifts most often, which movement pattern appears repeatedly, and when posture
-                alerts are most likely to happen.
+              <p id="plan-pattern">
+                Collecting posture history…
               </p>
             </div>
           </div>
@@ -633,9 +640,8 @@
             <div class="icon">↺</div>
             <div>
               <h3>Suggested adjustment</h3>
-              <p>
-                Provides one simple posture cue matched to the detected pattern, such as adjusting screen height,
-                relaxing the shoulders, or taking a short movement break.
+              <p id="plan-suggest">
+                A cue will appear once enough events are logged.
               </p>
             </div>
           </div>
@@ -652,6 +658,268 @@
       <span><a href="https://github.com/hcssssss/ConnectedSpine">GITHUB ↗</a></span>
     </div>
   </footer>
+
+  <script>
+    const DB = "https://connected-spine-default-rtdb.europe-west1.firebasedatabase.app";
+
+    const axisLabel = {
+      P: "leaning forward/back",
+      R: "leaning sideways",
+      PR: "leaning forward + sideways"
+    };
+
+    const nodeLabel = {
+      Chest: "Chest",
+      Head: "Head",
+      WaistL: "Left waist",
+      WaistR: "Right waist"
+    };
+
+    function updateAxisLabels() {
+      const nowH = new Date();
+
+      for (let k = 0; k < 4; k++) {
+        const d = new Date(nowH.getTime() - (12 - k * 4) * 3600e3);
+        document.getElementById(`ax-${k}`).textContent =
+          k === 3 ? `${nowH.getHours()}:00` : `${d.getHours()}:00`;
+      }
+    }
+
+    function resetDashboard() {
+      document.getElementById("stat-alerts").textContent = "0";
+      document.getElementById("stat-inrange").innerHTML = `--<span class="unit"> %</span>`;
+      document.getElementById("stat-stable").innerHTML = `--<span class="unit"> min</span>`;
+      document.getElementById("evt-count").textContent = "0 total";
+      document.getElementById("events").innerHTML =
+        `<div><span style="color:var(--faint)">No events received yet.</span></div>`;
+
+      document.getElementById("bars").innerHTML = new Array(12).fill(0).map(() =>
+        `<span style="height:8%"></span>`
+      ).join("");
+
+      updateAxisLabels();
+
+      document.getElementById("plan-pattern").textContent = "Collecting posture history…";
+      document.getElementById("plan-suggest").textContent = "A cue will appear once enough events are logged.";
+    }
+
+    async function refresh() {
+      try {
+        const query = `${DB}/events.json?orderBy=${encodeURIComponent('"createdAt"')}&limitToLast=500`;
+        const res = await fetch(query);
+        const data = await res.json();
+
+        if (!data) {
+          resetDashboard();
+          return;
+        }
+
+        const evts = Object.values(data)
+          .filter(e => typeof e.createdAt === "number")
+          .sort((a, b) => a.createdAt - b.createdAt);
+
+        if (!evts.length) {
+          resetDashboard();
+          return;
+        }
+
+        const now = Date.now();
+
+        // --- Alerts today: BAD count since local midnight
+        const midnight = new Date();
+        midnight.setHours(0, 0, 0, 0);
+
+        const today = evts.filter(e => e.createdAt >= midnight.getTime());
+        const badsToday = today.filter(e => e.e === "BAD");
+
+        document.getElementById("stat-alerts").textContent = badsToday.length;
+
+        // --- Time within range:
+        // Any node in BAD state means the whole system is out of range.
+        // The time window starts from today's first event.
+        if (today.length) {
+          const start = today[0].createdAt;
+          let badSet = new Set();
+          let badMs = 0;
+          let cursor = start;
+
+          for (const e of today) {
+            if (badSet.size > 0) {
+              badMs += e.createdAt - cursor;
+            }
+
+            cursor = e.createdAt;
+
+            if (e.e === "BAD") {
+              badSet.add(e.n);
+            } else {
+              badSet.delete(e.n);
+            }
+          }
+
+          if (badSet.size > 0) {
+            badMs += now - cursor;
+          }
+
+          const totalMs = Math.max(now - start, 1);
+          const pct = Math.max(0, Math.min(100, Math.round(100 * (1 - badMs / totalMs))));
+
+          document.getElementById("stat-inrange").innerHTML =
+            `${pct}<span class="unit"> %</span>`;
+
+          // --- Longest stable period:
+          // Longest continuous period today with no node in BAD state.
+          let longest = 0;
+          let prevEnd = start;
+          badSet = new Set();
+
+          for (const e of today) {
+            if (badSet.size === 0) {
+              longest = Math.max(longest, e.createdAt - prevEnd);
+            }
+
+            prevEnd = e.createdAt;
+
+            if (e.e === "BAD") {
+              badSet.add(e.n);
+            } else {
+              badSet.delete(e.n);
+            }
+          }
+
+          if (badSet.size === 0) {
+            longest = Math.max(longest, now - prevEnd);
+          }
+
+          document.getElementById("stat-stable").innerHTML =
+            `${Math.round(longest / 60000)}<span class="unit"> min</span>`;
+        } else {
+          document.getElementById("stat-inrange").innerHTML = `--<span class="unit"> %</span>`;
+          document.getElementById("stat-stable").innerHTML = `--<span class="unit"> min</span>`;
+        }
+
+        // --- 12h histogram: BAD events per hour
+        const bins = new Array(12).fill(0);
+
+        for (const e of evts) {
+          if (e.e !== "BAD") continue;
+
+          const age = now - e.createdAt;
+
+          if (age >= 0 && age < 12 * 3600e3) {
+            bins[11 - Math.floor(age / 3600e3)]++;
+          }
+        }
+
+        const max = Math.max(...bins, 1);
+
+        document.getElementById("bars").innerHTML = bins.map(v =>
+          `<span style="height:${Math.max(8, Math.round(v / max * 100))}%;${
+            v ? 'background:linear-gradient(to top,var(--cyan-dim),var(--cyan));opacity:.85' : ''
+          }"></span>`
+        ).join("");
+
+        updateAxisLabels();
+
+        // --- Recent events list: newest first, last 10 + folded older summary
+        const recent = evts.slice(-10).reverse();
+        const older = evts.length - recent.length;
+        const olderBads = evts
+          .slice(0, Math.max(0, evts.length - 10))
+          .filter(e => e.e === "BAD").length;
+
+        document.getElementById("evt-count").textContent = `${evts.length} total`;
+
+        let html = recent.map(e => {
+          const t = new Date(e.createdAt).toLocaleString("en-GB");
+          const name = nodeLabel[e.name] || e.name || `Node ${e.n}`;
+
+          const dP = typeof e.dP === "number" ? Math.abs(e.dP).toFixed(1) : "--";
+          const dR = typeof e.dR === "number" ? Math.abs(e.dR).toFixed(1) : "--";
+
+          const ang = e.a === "R"  ? `tilt ${dR}°`
+                    : e.a === "PR" ? `tilt ${dP}° / ${dR}°`
+                    :                `tilt ${dP}°`;
+
+          return e.e === "BAD"
+            ? `<div><span style="color:var(--faint)">${t}</span> · <b style="color:var(--cyan)">${name}</b> <span style="color:#e07a7a">${axisLabel[e.a] || "posture drift"}</span> <span style="color:var(--faint)">(${ang})</span></div>`
+            : `<div><span style="color:var(--faint)">${t}</span> · <b>${name}</b> <span style="color:#5fc78f">recovered</span></div>`;
+        }).join("");
+
+        if (older > 0) {
+          html += `<div style="color:var(--faint);border-top:1px dashed var(--line);margin-top:8px;padding-top:8px">
+            + ${older} earlier events (${olderBads} alerts) — full history in database
+          </div>`;
+        }
+
+        document.getElementById("events").innerHTML = html;
+
+        // --- N3 Personal plan (rule-based)
+        const bads = evts.filter(e => e.e === "BAD");
+
+        if (bads.length >= 3) {
+          const cnt = {};
+          const axCnt = {};
+          const hrCnt = {};
+
+          for (const e of bads) {
+            cnt[e.name] = (cnt[e.name] || 0) + 1;
+            axCnt[e.a] = (axCnt[e.a] || 0) + 1;
+
+            const h = new Date(e.createdAt).getHours();
+            hrCnt[h] = (hrCnt[h] || 0) + 1;
+          }
+
+          const top = o => Object.entries(o).sort((a, b) => b[1] - a[1])[0];
+
+          const [topNode, nodeN] = top(cnt);
+          const [topAxis] = top(axCnt);
+          const [topHour] = top(hrCnt);
+
+          const axisTxt = {
+            P: "forward/backward lean",
+            R: "sideways lean",
+            PR: "combined lean"
+          };
+
+          document.getElementById("plan-pattern").innerHTML =
+            `<b style="color:var(--cyan)">${nodeLabel[topNode] || topNode}</b> drifts most often ` +
+            `(<b style="color:var(--ink)">${nodeN} of ${bads.length}</b> alerts), mainly ${axisTxt[topAxis] || "mixed"} — ` +
+            `most alerts occur around <b style="color:var(--ink)">${topHour}:00–${(+topHour + 1) % 24}:00</b>.`;
+
+          const tips = {
+            "Head|P":   "Raise your screen closer to eye level to reduce forward head tilt.",
+            "Head|R":   "Center your screen in front of you — avoid looking sideways for long periods.",
+            "Chest|P":  "Sit back against the chair and let the backrest support your upper body.",
+            "Chest|R":  "Keep weight even on both hips; avoid leaning on one armrest.",
+            "WaistL|P": "Adjust seat depth so your lower back stays supported.",
+            "WaistL|R": "You tend to lean left — check desk layout and mouse position.",
+            "WaistR|P": "Adjust seat depth so your lower back stays supported.",
+            "WaistR|R": "You tend to lean right — check desk layout and mouse position."
+          };
+
+          document.getElementById("plan-suggest").textContent =
+            tips[`${topNode}|${topAxis}`] || tips[`${topNode}|P`] ||
+            "Take a short movement break every 30–45 minutes.";
+        } else {
+          document.getElementById("plan-pattern").textContent =
+            "Collecting posture history…";
+
+          document.getElementById("plan-suggest").textContent =
+            "A cue will appear once enough events are logged.";
+        }
+
+      } catch (err) {
+        console.error("Firebase dashboard refresh failed:", err);
+        document.getElementById("events").innerHTML =
+          `<div><span style="color:#e07a7a">Firebase data could not be loaded. Check database rules and URL.</span></div>`;
+      }
+    }
+
+    resetDashboard();
+    refresh();
+    setInterval(refresh, 15000);
+  </script>
 
 </body>
 
