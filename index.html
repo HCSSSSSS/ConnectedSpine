@@ -3,7 +3,9 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#010514">
+  <meta name="color-scheme" content="dark">
   <title>Connected Spine — Wearable Posture Monitoring</title>
   <meta name="description" content="A multi-node wearable posture feedback system with local vibration reminders.">
 
@@ -15,19 +17,28 @@
 
   <style>
     :root {
-      --bg: #0A1017;
-      --panel: #0F1822;
-      --panel-2: #121D29;
-      --line: #1C2B3A;
-      --line-soft: #16222F;
+      /* bg matches logo.png background (#010514) so the mark sits seamlessly */
+      --bg: #010514;
+      --panel: #060D19;
+      --panel-2: #0A1524;
+      --line: #152435;
+      --line-soft: #0E1B2A;
       --ink: #E9F1F7;
       --muted: #8CA1B4;
-      --faint: #5A6E80;
+      --faint: #56697C;
       --cyan: #38E1EA;
       --cyan-dim: #0E7490;
       --cyan-glow: rgba(56, 225, 234, .14);
       --radius: 14px;
       --maxw: 960px;
+      --pad-x: 22px;
+      --railw: 34px;
+    }
+
+    @supports (padding: max(0px)) {
+      :root {
+        --pad-x: max(22px, env(safe-area-inset-left), env(safe-area-inset-right));
+      }
     }
 
     * {
@@ -46,6 +57,12 @@
       font-family: 'IBM Plex Sans', system-ui, sans-serif;
       line-height: 1.6;
       -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    ::selection {
+      background: var(--cyan);
+      color: #02121A;
     }
 
     a {
@@ -65,57 +82,107 @@
 
     /* ===== Hero ===== */
     .hero {
+      position: relative;
       max-width: var(--maxw);
       margin: 0 auto;
-      padding: 34px 24px 10px;
+      min-height: 46vh;
+      min-height: 46svh;
+      padding: 44px var(--pad-x) 26px;
       display: flex;
-      align-items: center;
-      gap: 14px;
+      flex-direction: column;
+      justify-content: center;
+      gap: 10px;
+      overflow: visible;
+    }
+
+    /* soft cyan atmosphere behind the opening */
+    .hero::before {
+      content: "";
+      position: absolute;
+      top: -30%;
+      left: -10%;
+      width: 80%;
+      height: 120%;
+      background: radial-gradient(55% 45% at 30% 30%, rgba(56, 225, 234, .07), transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero>* {
+      position: relative;
+      animation: heroIn .7s cubic-bezier(.22, .7, .3, 1) both;
+    }
+
+    .hero>*:nth-child(2) { animation-delay: .07s; }
+    .hero>*:nth-child(3) { animation-delay: .14s; }
+    .hero>*:nth-child(4) { animation-delay: .21s; }
+    .hero>*:nth-child(5) { animation-delay: .30s; }
+
+    @keyframes heroIn {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: none;
+      }
     }
 
     .hero .mark {
-      flex: 0 0 auto;
       display: block;
-      width: 40px;
-      height: 40px;
+      width: 52px;
+      height: 52px;
       object-fit: contain;
-      border-radius: 8px;
-      /* 圆角软化方块感 */
+      border-radius: 12px;
+      margin-bottom: 4px;
     }
 
     .hero h1 {
       font-family: 'Chakra Petch', sans-serif;
       font-weight: 700;
-      font-size: clamp(1.25rem, 3.4vw, 1.7rem);
-      letter-spacing: .06em;
+      font-size: clamp(1.7rem, 7vw, 2.6rem);
+      letter-spacing: .05em;
       text-transform: uppercase;
-      white-space: nowrap;
+      line-height: 1.15;
     }
 
     .hero h1 .lit {
       color: var(--cyan);
     }
 
-    .hero .tag {
-      margin-left: auto;
+    .hero .kicker {
       font-family: 'IBM Plex Mono', monospace;
-      font-size: .72rem;
-      color: var(--faint);
-      letter-spacing: .04em;
-      text-align: right;
+      font-size: .68rem;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      opacity: .75;
     }
 
     .hero-sub {
-      max-width: var(--maxw);
-      margin: 0 auto;
-      padding: 8px 24px 0;
       color: var(--muted);
-      font-size: .95rem;
+      font-size: .98rem;
+      max-width: 46ch;
     }
 
-    @media (max-width:640px) {
-      .hero .tag {
-        display: none;
+    .scroll-hint {
+      margin-top: 14px;
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      color: var(--faint);
+      animation: heroIn .7s .3s cubic-bezier(.22, .7, .3, 1) both, drift 2.4s 1.2s ease-in-out infinite;
+    }
+
+    @keyframes drift {
+      0%, 100% {
+        transform: translateY(0);
+        opacity: .45;
+      }
+      50% {
+        transform: translateY(6px);
+        opacity: .95;
       }
     }
 
@@ -123,22 +190,39 @@
     .frame {
       max-width: var(--maxw);
       margin: 0 auto;
-      padding: 28px 24px 0;
+      padding: 20px var(--pad-x) 0;
       display: grid;
-      grid-template-columns: 34px 1fr;
+      grid-template-columns: var(--railw) 1fr;
       gap: 22px;
       position: relative;
     }
 
+    /* dim track */
     .frame::before {
       content: "";
       position: absolute;
-      left: 41px;
-      top: 32px;
+      left: calc(var(--pad-x) + var(--railw) / 2 - 1px);
+      top: 26px;
       bottom: 18px;
       width: 2px;
-      background: linear-gradient(to bottom, var(--cyan-dim), var(--line) 72%, transparent);
+      background: var(--line);
       border-radius: 2px;
+    }
+
+    /* cyan fill — driven by scroll (transform: scaleY) */
+    .spine-fill {
+      position: absolute;
+      left: calc(var(--pad-x) + var(--railw) / 2 - 1px);
+      top: 26px;
+      bottom: 18px;
+      width: 2px;
+      border-radius: 2px;
+      background: linear-gradient(to bottom, var(--cyan), var(--cyan-dim));
+      box-shadow: 0 0 10px rgba(56, 225, 234, .35);
+      transform: scaleY(0);
+      transform-origin: top;
+      will-change: transform;
+      z-index: 0;
     }
 
     section {
@@ -148,6 +232,7 @@
       padding-bottom: 72px;
     }
 
+    /* vertebra node */
     section .node {
       width: 22px;
       height: 30px;
@@ -157,29 +242,44 @@
       border: 1.5px solid var(--line);
       position: relative;
       z-index: 1;
+      transition: border-color .45s, background .45s, box-shadow .45s;
     }
 
-    section:target .node,
-    section .node.active {
+    section.active .node {
       border-color: var(--cyan);
       background: var(--cyan-glow);
-      box-shadow: 0 0 14px var(--cyan-glow);
+      box-shadow: 0 0 14px var(--cyan-glow), 0 0 4px rgba(56, 225, 234, .4);
+    }
+
+    /* scroll-in reveal (class added by JS so no-JS users still see everything) */
+    section.will-reveal {
+      opacity: 0;
+      transform: translateY(18px);
+      transition: opacity .6s cubic-bezier(.22, .7, .3, 1), transform .6s cubic-bezier(.22, .7, .3, 1);
+    }
+
+    section.revealed {
+      opacity: 1;
+      transform: none;
     }
 
     @media (max-width:640px) {
-      .frame {
-        grid-template-columns: 1fr;
-        padding-top: 18px;
+      :root {
+        --railw: 24px;
       }
 
-      .frame::before,
-      section .node {
-        display: none;
+      .frame {
+        gap: 14px;
       }
 
       section {
-        grid-template-columns: 1fr;
-        padding-bottom: 56px;
+        padding-bottom: 60px;
+      }
+
+      section .node {
+        width: 18px;
+        height: 25px;
+        border-radius: 6px;
       }
     }
 
@@ -187,27 +287,29 @@
     .eyebrow {
       font-family: 'IBM Plex Mono', monospace;
       font-size: .72rem;
-      letter-spacing: .14em;
+      letter-spacing: .16em;
       text-transform: uppercase;
-      color: var(--cyan);
+      color: var(--muted);
       margin-bottom: 10px;
+      transition: color .45s, text-shadow .45s;
     }
 
-    .eyebrow .idx {
-      color: var(--faint);
+    section.active .eyebrow {
+      color: var(--cyan);
+      text-shadow: 0 0 12px rgba(56, 225, 234, .35);
     }
 
     h2 {
       font-family: 'Chakra Petch', sans-serif;
       font-weight: 600;
-      font-size: clamp(1.15rem, 2.6vw, 1.45rem);
+      font-size: clamp(1.3rem, 4.5vw, 1.55rem);
       letter-spacing: .02em;
       margin-bottom: 6px;
     }
 
     .sub {
       color: var(--muted);
-      font-size: .92rem;
+      font-size: .93rem;
       max-width: 60ch;
       margin-bottom: 22px;
     }
@@ -219,32 +321,14 @@
       overflow: hidden;
       border: 1px solid var(--line);
       background: var(--panel);
-      box-shadow: 0 0 0 1px rgba(56, 225, 234, .05), 0 24px 60px -30px rgba(0, 0, 0, .8);
+      box-shadow: 0 0 0 1px rgba(56, 225, 234, .05), 0 24px 60px -30px rgba(0, 0, 0, .85);
     }
 
     .video-shell video {
       display: block;
       width: 100%;
       aspect-ratio: 16/9;
-      background: #05090D;
-    }
-
-    .video-meta {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 10px 14px;
-      border-top: 1px solid var(--line-soft);
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: .72rem;
-      color: var(--faint);
-    }
-
-    @media (max-width:640px) {
-      .video-meta {
-        flex-direction: column;
-        gap: 4px;
-      }
+      background: #02060F;
     }
 
     /* ===== How it works ===== */
@@ -254,17 +338,16 @@
       gap: 12px;
     }
 
-    @media (max-width:760px) {
-      .steps {
-        grid-template-columns: 1fr;
-      }
-    }
-
     .step {
       border: 1px solid var(--line);
       border-radius: var(--radius);
       background: var(--panel);
       padding: 16px;
+      transition: transform .18s ease;
+    }
+
+    .step:active {
+      transform: scale(.985);
     }
 
     .step .num {
@@ -288,6 +371,29 @@
       color: var(--muted);
     }
 
+    /* mobile: swipeable card row (cards peek off the right edge) */
+    @media (max-width:760px) {
+      .steps {
+        display: flex;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        gap: 12px;
+        margin-right: calc(var(--pad-x) * -1);
+        padding-right: var(--pad-x);
+        padding-bottom: 6px;
+        scrollbar-width: none;
+      }
+
+      .steps::-webkit-scrollbar {
+        display: none;
+      }
+
+      .step {
+        flex: 0 0 76%;
+        scroll-snap-align: start;
+      }
+    }
+
     /* ===== Data dashboard ===== */
     .stat-grid {
       display: grid;
@@ -296,18 +402,31 @@
       margin-bottom: 12px;
     }
 
-    @media (max-width:760px) {
-      .stat-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
     .stat {
-      border: 1px dashed var(--line);
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--line);
       border-radius: var(--radius);
-      background: linear-gradient(180deg, var(--panel), #0B131C);
+      background: linear-gradient(180deg, var(--panel), #050B14);
       padding: 18px 18px 16px;
       min-height: 112px;
+      transition: transform .18s ease;
+    }
+
+    .stat:active {
+      transform: scale(.985);
+    }
+
+    /* cyan accent edge */
+    .stat::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--cyan), transparent 70%);
+      opacity: .55;
     }
 
     .stat .label {
@@ -323,7 +442,7 @@
       font-family: 'Chakra Petch', sans-serif;
       font-weight: 700;
       font-size: 1.75rem;
-      color: var(--muted);
+      color: var(--ink);
     }
 
     .stat .value .unit {
@@ -332,8 +451,31 @@
       font-weight: 500;
     }
 
+    @media (max-width:760px) {
+      .stat-grid {
+        gap: 8px;
+      }
+
+      .stat {
+        padding: 12px 10px;
+        min-height: 96px;
+      }
+
+      .stat .label {
+        font-size: .58rem;
+      }
+
+      .stat .value {
+        font-size: 1.25rem;
+      }
+
+      .stat .value .unit {
+        font-size: .7rem;
+      }
+    }
+
     .panel-wide {
-      border: 1px dashed var(--line);
+      border: 1px solid var(--line);
       border-radius: var(--radius);
       background: var(--panel);
       padding: 18px;
@@ -374,19 +516,6 @@
       color: var(--faint);
     }
 
-    .reserved-pill {
-      display: inline-block;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: .66rem;
-      letter-spacing: .08em;
-      color: var(--cyan);
-      border: 1px solid var(--cyan-dim);
-      border-radius: 999px;
-      padding: 2px 10px;
-      background: var(--cyan-glow);
-      vertical-align: middle;
-    }
-
     /* ===== Personal feedback plan ===== */
     .plan-stack {
       display: grid;
@@ -395,7 +524,7 @@
     }
 
     .plan-card {
-      border: 1px dashed var(--line);
+      border: 1px solid var(--line);
       border-radius: var(--radius);
       background: var(--panel);
       padding: 20px;
@@ -404,6 +533,11 @@
       gap: 14px;
       align-items: start;
       min-height: 120px;
+      transition: transform .18s ease;
+    }
+
+    .plan-card:active {
+      transform: scale(.985);
     }
 
     .plan-card .icon {
@@ -446,7 +580,7 @@
     .foot-inner {
       max-width: var(--maxw);
       margin: 0 auto;
-      padding: 22px 24px 30px;
+      padding: 22px var(--pad-x) calc(30px + env(safe-area-inset-bottom, 0px));
       display: flex;
       flex-wrap: wrap;
       gap: 10px 24px;
@@ -472,448 +606,527 @@
 <body>
 
   <!-- ===== Hero: logo + project name ===== -->
-  
-    <header class="hero">
-
-      <img class="mark" src="logo.png" alt="Connected Spine logo">
-
-      <h1>Connected <span class="lit">Spine</span></h1>
-
-      <span class="tag">MULTI-NODE WEARABLE<br>POSTURE FEEDBACK SYSTEM</span>
-    </header>
-
+  <header class="hero">
+    <img class="mark" src="logo.png" alt="Connected Spine logo">
+    <h1>Connected <span class="lit">Spine</span></h1>
+    <p class="kicker">Multi-node wearable posture feedback system</p>
     <p class="hero-sub">
       A multi-node wearable that turns posture changes into local vibration feedback.
     </p>
-
-    <div class="frame">
-
-      <!-- ===== 1. Demo video ===== -->
-      <section id="demo">
-        <div class="node active" aria-hidden="true"></div>
-        <div>
-          <p class="eyebrow"><span class="idx">N0 /</span> Demo</p>
-          <h2>See it working</h2>
-          <p class="sub">
-            A one-minute walkthrough showing how the system detects posture changes at different body areas and gives
-            vibration feedback at the area that needs attention.
-          </p>
-
-          <div class="video-shell">
-            <video controls preload="metadata" poster="" src="Demo.mp4">
-              Your browser does not support embedded video.
-            </video>
-
-          </div>
-        </div>
-      </section>
-
-      <!-- ===== 2. How it works ===== -->
-      <section id="how">
-        <div class="node" aria-hidden="true"></div>
-        <div>
-          <p class="eyebrow"><span class="idx">N1 /</span> How it works</p>
-          <h2>From posture change to local feedback</h2>
-          <p class="sub">
-            The wearable uses separate nodes to sense posture changes at different body areas. When one area moves
-            beyond
-            a set range, the system identifies the location and sends a gentle vibration cue to that part of the body.
-          </p>
-
-          <div class="steps">
-            <div class="step">
-              <span class="num">STEP 1</span>
-              <h3>Sense</h3>
-              <p>Each node tracks the tilt of its body area independently.</p>
-            </div>
-
-            <div class="step">
-              <span class="num">STEP 2</span>
-              <h3>Detect</h3>
-              <p>The chest node compares readings against a set range and locates where posture drifts.</p>
-            </div>
-
-            <div class="step">
-              <span class="num">STEP 3</span>
-              <h3>Feedback</h3>
-              <p>A gentle vibration cue is sent to that specific node — no screen, no sound.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ===== 3. Posture data dashboard ===== -->
-      <section id="data">
-        <div class="node" aria-hidden="true"></div>
-        <div>
-          <p class="eyebrow"><span class="idx">N2 /</span> Posture data</p>
-          <h2>Posture data dashboard</h2>
-          <p class="sub">
-            Live posture events logged from the wearable to Firebase Realtime Database.
-          </p>
-
-          <div class="stat-grid">
-            <div class="stat">
-              <div class="label">Time within range</div>
-              <div class="value" id="stat-inrange">--<span class="unit"> %</span></div>
-            </div>
-
-            <div class="stat">
-              <div class="label">Posture alerts today</div>
-              <div class="value" id="stat-alerts">--</div>
-            </div>
-
-            <div class="stat">
-              <div class="label">Longest stable period</div>
-              <div class="value" id="stat-stable">--<span class="unit"> min</span></div>
-            </div>
-          </div>
-
-          <div class="panel-wide">
-            <div class="label">
-              <span>Posture alerts · last 12 h</span>
-              <span>UTC+1</span>
-            </div>
-
-            <div class="bars" id="bars" aria-hidden="true">
-              <span style="height:22%"></span>
-              <span style="height:40%"></span>
-              <span style="height:15%"></span>
-              <span style="height:55%"></span>
-              <span style="height:30%"></span>
-              <span style="height:70%"></span>
-              <span style="height:45%"></span>
-              <span style="height:25%"></span>
-              <span style="height:60%"></span>
-              <span style="height:35%"></span>
-              <span style="height:18%"></span>
-              <span style="height:48%"></span>
-            </div>
-
-            <div class="bar-axis" aria-hidden="true">
-              <span id="ax-0"></span>
-              <span id="ax-1"></span>
-              <span id="ax-2"></span>
-              <span id="ax-3"></span>
-            </div>
-          </div>
-
-          <div class="panel-wide" style="margin-top:12px">
-            <div class="label">
-              <span>Recent events</span>
-              <span id="evt-count"></span>
-            </div>
-            <div id="events" style="font-family:'IBM Plex Mono',monospace;font-size:.74rem;line-height:2"></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ===== 4. Personal feedback plan ===== -->
-      <section id="plan">
-        <div class="node" aria-hidden="true"></div>
-        <div>
-          <p class="eyebrow"><span class="idx">N3 /</span> Personal plan</p>
-          <h2>Personal feedback plan</h2>
-          <p class="sub">
-            Recommendation cards generated from posture history — showing which body area drifts most and what
-            adjustment
-            may help.
-          </p>
-
-          <div class="plan-stack">
-            <div class="plan-card">
-              <div class="icon">◔</div>
-              <div>
-                <h3>Pattern summary</h3>
-                <p id="plan-pattern">
-                  Collecting posture history…
-                </p>
-              </div>
-            </div>
-
-            <div class="plan-card">
-              <div class="icon">↺</div>
-              <div>
-                <h3>Suggested adjustment</h3>
-                <p id="plan-suggest">
-                  A cue will appear once enough events are logged.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
+    <div class="scroll-hint" aria-hidden="true">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M3 6l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
     </div>
+  </header>
 
-    <footer>
-      <div class="foot-inner">
-        <span>CONNECTED SPINE · CHAOSHUO HAN · 2026</span>
-        <span>UCL CASA · Connected Environments</span>
-        <span><a href="https://github.com/hcssssss/ConnectedSpine">GITHUB ↗</a></span>
+  <div class="frame">
+    <div class="spine-fill" aria-hidden="true"></div>
+
+    <!-- ===== 1. Demo video ===== -->
+    <section id="demo">
+      <div class="node" aria-hidden="true"></div>
+      <div>
+        <p class="eyebrow">Demo</p>
+        <h2>See it working</h2>
+        <p class="sub">
+          A 30-second demo showing how the system detects poor sitting posture and gives a gentle vibration reminder
+          to adjust.
+        </p>
+
+        <div class="video-shell">
+          <video controls preload="metadata" playsinline src="Demo.mp4">
+            Your browser does not support embedded video.
+          </video>
+        </div>
       </div>
-    </footer>
+    </section>
 
-    <script>
-      const DB = "https://connected-spine-default-rtdb.europe-west1.firebasedatabase.app";
+    <!-- ===== 2. How it works ===== -->
+    <section id="how">
+      <div class="node" aria-hidden="true"></div>
+      <div>
+        <p class="eyebrow">How it works</p>
+        <h2>From posture change to local feedback</h2>
+        <p class="sub">
+          The wearable uses separate nodes to sense posture changes at different body areas. When one area moves
+          beyond a set range, the system identifies the location and sends a gentle vibration cue to that part of the
+          body.
+        </p>
 
-      const axisLabel = {
-        P: "leaning forward/back",
-        R: "leaning sideways",
-        PR: "leaning forward + sideways"
-      };
+        <div class="steps">
+          <div class="step">
+            <span class="num">STEP 1</span>
+            <h3>Sense</h3>
+            <p>Each node tracks the tilt of its body area independently.</p>
+          </div>
 
-      const nodeLabel = {
-        Chest: "Chest",
-        Head: "Head",
-        WaistL: "Left waist",
-        WaistR: "Right waist"
-      };
+          <div class="step">
+            <span class="num">STEP 2</span>
+            <h3>Detect</h3>
+            <p>The chest node compares readings against a set range and locates where posture drifts.</p>
+          </div>
 
-      function updateAxisLabels() {
-        const nowH = new Date();
+          <div class="step">
+            <span class="num">STEP 3</span>
+            <h3>Feedback</h3>
+            <p>A gentle vibration cue is sent to that specific node — no screen, no sound.</p>
+          </div>
+        </div>
+      </div>
+    </section>
 
+    <!-- ===== 3. Posture data dashboard ===== -->
+    <section id="data">
+      <div class="node" aria-hidden="true"></div>
+      <div>
+        <p class="eyebrow">Posture data</p>
+        <h2>Posture data dashboard</h2>
+        <p class="sub">
+          Live posture events logged from the wearable to Firebase Realtime Database.
+        </p>
+
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="label">Time within range</div>
+            <div class="value" id="stat-inrange">--<span class="unit"> %</span></div>
+          </div>
+
+          <div class="stat">
+            <div class="label">Posture alerts</div>
+            <div class="value" id="stat-alerts">--</div>
+          </div>
+
+          <div class="stat">
+            <div class="label">Longest stable period</div>
+            <div class="value" id="stat-stable">--<span class="unit"> min</span></div>
+          </div>
+        </div>
+
+        <div class="panel-wide">
+          <div class="label">
+            <span>Posture alerts · latest session</span>
+            <span id="hist-date"></span>
+          </div>
+
+          <div class="bars" id="bars" aria-hidden="true">
+            <span style="height:22%"></span>
+            <span style="height:40%"></span>
+            <span style="height:15%"></span>
+            <span style="height:55%"></span>
+            <span style="height:30%"></span>
+            <span style="height:70%"></span>
+            <span style="height:45%"></span>
+            <span style="height:25%"></span>
+            <span style="height:60%"></span>
+            <span style="height:35%"></span>
+            <span style="height:18%"></span>
+            <span style="height:48%"></span>
+          </div>
+
+          <div class="bar-axis" aria-hidden="true">
+            <span id="ax-0"></span>
+            <span id="ax-1"></span>
+            <span id="ax-2"></span>
+            <span id="ax-3"></span>
+          </div>
+        </div>
+
+        <div class="panel-wide" style="margin-top:12px">
+          <div class="label">
+            <span>Recent events</span>
+            <span id="evt-count"></span>
+          </div>
+          <div id="events" style="font-family:'IBM Plex Mono',monospace;font-size:.74rem;line-height:2"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 4. Personal feedback plan ===== -->
+    <section id="plan">
+      <div class="node" aria-hidden="true"></div>
+      <div>
+        <p class="eyebrow">Personal plan</p>
+        <h2>Personal feedback plan</h2>
+        <p class="sub">
+          Recommendation cards generated from posture history — showing which body area drifts most and what
+          adjustment may help.
+        </p>
+
+        <div class="plan-stack">
+          <div class="plan-card">
+            <div class="icon">◔</div>
+            <div>
+              <h3>Pattern summary</h3>
+              <p id="plan-pattern">
+                Collecting posture history…
+              </p>
+            </div>
+          </div>
+
+          <div class="plan-card">
+            <div class="icon">↺</div>
+            <div>
+              <h3>Suggested adjustment</h3>
+              <p id="plan-suggest">
+                A cue will appear once enough events are logged.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <footer>
+    <div class="foot-inner">
+      <span>CONNECTED SPINE · CHAOSHUO HAN · 2026</span>
+      <span>UCL CASA · Connected Environments</span>
+      <span><a href="https://github.com/hcssssss/ConnectedSpine">GITHUB ↗</a></span>
+    </div>
+  </footer>
+
+  <script>
+    const DB = "https://connected-spine-default-rtdb.europe-west1.firebasedatabase.app";
+
+    const axisLabel = {
+      P: "leaning forward/back",
+      R: "leaning sideways",
+      PR: "leaning forward + sideways"
+    };
+
+    const nodeLabel = {
+      Chest: "Chest",
+      Head: "Head",
+      WaistL: "Left waist",
+      WaistR: "Right waist"
+    };
+
+    function updateAxisLabels(startT, endT) {
+      if (!startT || !endT) {
         for (let k = 0; k < 4; k++) {
-          const d = new Date(nowH.getTime() - (12 - k * 4) * 3600e3);
-          document.getElementById(`ax-${k}`).textContent =
-            k === 3 ? `${nowH.getHours()}:00` : `${d.getHours()}:00`;
+          document.getElementById(`ax-${k}`).textContent = "";
         }
+        return;
       }
 
-      function resetDashboard() {
-        document.getElementById("stat-alerts").textContent = "0";
-        document.getElementById("stat-inrange").innerHTML = `--<span class="unit"> %</span>`;
-        document.getElementById("stat-stable").innerHTML = `--<span class="unit"> min</span>`;
-        document.getElementById("evt-count").textContent = "0 total";
-        document.getElementById("events").innerHTML =
-          `<div><span style="color:var(--faint)">No events received yet.</span></div>`;
+      const fmt = t => {
+        const d = new Date(t);
+        return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      };
 
-        document.getElementById("bars").innerHTML = new Array(12).fill(0).map(() =>
-          `<span style="height:8%"></span>`
+      for (let k = 0; k < 4; k++) {
+        document.getElementById(`ax-${k}`).textContent =
+          fmt(startT + (endT - startT) * (k / 3));
+      }
+    }
+
+    function resetDashboard() {
+      document.getElementById("stat-alerts").textContent = "0";
+      document.getElementById("stat-inrange").innerHTML = `--<span class="unit"> %</span>`;
+      document.getElementById("stat-stable").innerHTML = `--<span class="unit"> min</span>`;
+      document.getElementById("evt-count").textContent = "0 total";
+      document.getElementById("events").innerHTML =
+        `<div><span style="color:var(--faint)">No events received yet.</span></div>`;
+
+      document.getElementById("bars").innerHTML = new Array(12).fill(0).map(() =>
+        `<span style="height:8%"></span>`
+      ).join("");
+
+      document.getElementById("hist-date").textContent = "";
+      updateAxisLabels();
+
+      document.getElementById("plan-pattern").textContent = "Collecting posture history…";
+      document.getElementById("plan-suggest").textContent = "A cue will appear once enough events are logged.";
+    }
+
+    async function refresh() {
+      try {
+        const query = `${DB}/events.json?orderBy=${encodeURIComponent('"createdAt"')}&limitToLast=500`;
+        const res = await fetch(query);
+        const data = await res.json();
+
+        if (!data) {
+          resetDashboard();
+          return;
+        }
+
+        const evts = Object.values(data)
+          .filter(e => typeof e.createdAt === "number")
+          .sort((a, b) => a.createdAt - b.createdAt);
+
+        if (!evts.length) {
+          resetDashboard();
+          return;
+        }
+
+        const now = Date.now();
+
+        // --- Anchor everything to the most recent recorded day ("latest session"),
+        // so the dashboard still shows data when the device isn't running right now.
+        const lastT = evts[evts.length - 1].createdAt;
+        const dayMid = new Date(lastT);
+        dayMid.setHours(0, 0, 0, 0);
+
+        const todayMid = new Date();
+        todayMid.setHours(0, 0, 0, 0);
+
+        // if the latest session is today, keep the window live-updating to "now"
+        const endT = dayMid.getTime() === todayMid.getTime() ? now : lastT;
+
+        const today = evts.filter(e => e.createdAt >= dayMid.getTime());
+        const badsToday = today.filter(e => e.e === "BAD");
+
+        document.getElementById("stat-alerts").textContent = badsToday.length;
+
+        // --- Time within range:
+        // Any node in BAD state means the whole system is out of range.
+        // The time window starts from today's first event.
+        if (today.length) {
+          const start = today[0].createdAt;
+          let badSet = new Set();
+          let badMs = 0;
+          let cursor = start;
+
+          for (const e of today) {
+            if (badSet.size > 0) {
+              badMs += e.createdAt - cursor;
+            }
+
+            cursor = e.createdAt;
+
+            if (e.e === "BAD") {
+              badSet.add(e.n);
+            } else {
+              badSet.delete(e.n);
+            }
+          }
+
+          if (badSet.size > 0) {
+            badMs += endT - cursor;
+          }
+
+          const totalMs = Math.max(endT - start, 1);
+          const pct = Math.max(0, Math.min(100, Math.round(100 * (1 - badMs / totalMs))));
+
+          document.getElementById("stat-inrange").innerHTML =
+            `${pct}<span class="unit"> %</span>`;
+
+          // --- Longest stable period:
+          // Longest continuous period today with no node in BAD state.
+          let longest = 0;
+          let prevEnd = start;
+          badSet = new Set();
+
+          for (const e of today) {
+            if (badSet.size === 0) {
+              longest = Math.max(longest, e.createdAt - prevEnd);
+            }
+
+            prevEnd = e.createdAt;
+
+            if (e.e === "BAD") {
+              badSet.add(e.n);
+            } else {
+              badSet.delete(e.n);
+            }
+          }
+
+          if (badSet.size === 0) {
+            longest = Math.max(longest, endT - prevEnd);
+          }
+
+          document.getElementById("stat-stable").innerHTML =
+            `${Math.round(longest / 60000)}<span class="unit"> min</span>`;
+        } else {
+          document.getElementById("stat-inrange").innerHTML = `--<span class="unit"> %</span>`;
+          document.getElementById("stat-stable").innerHTML = `--<span class="unit"> min</span>`;
+        }
+
+        // --- Session histogram: BAD events across the latest recorded day,
+        // split into 12 equal time slices from first to last activity.
+        const sessStart = today[0].createdAt;
+        const sessSpan = Math.max(endT - sessStart, 60000);
+        const bins = new Array(12).fill(0);
+
+        for (const e of today) {
+          if (e.e !== "BAD") continue;
+
+          const idx = Math.min(11, Math.max(0, Math.floor((e.createdAt - sessStart) / sessSpan * 12)));
+          bins[idx]++;
+        }
+
+        const max = Math.max(...bins, 1);
+
+        document.getElementById("bars").innerHTML = bins.map(v =>
+          `<span style="height:${Math.max(8, Math.round(v / max * 100))}%;${v ? 'background:linear-gradient(to top,var(--cyan-dim),var(--cyan));opacity:.85' : ''
+          }"></span>`
         ).join("");
 
-        updateAxisLabels();
+        updateAxisLabels(sessStart, endT);
+        document.getElementById("hist-date").textContent =
+          new Date(lastT).toLocaleDateString("en-GB");
 
-        document.getElementById("plan-pattern").textContent = "Collecting posture history…";
-        document.getElementById("plan-suggest").textContent = "A cue will appear once enough events are logged.";
-      }
+        // --- Recent events list: newest first, last 10 + folded older summary
+        const recent = evts.slice(-10).reverse();
+        const older = evts.length - recent.length;
+        const olderBads = evts
+          .slice(0, Math.max(0, evts.length - 10))
+          .filter(e => e.e === "BAD").length;
 
-      async function refresh() {
-        try {
-          const query = `${DB}/events.json?orderBy=${encodeURIComponent('"createdAt"')}&limitToLast=500`;
-          const res = await fetch(query);
-          const data = await res.json();
+        document.getElementById("evt-count").textContent = `${evts.length} total`;
 
-          if (!data) {
-            resetDashboard();
-            return;
-          }
+        let html = recent.map(e => {
+          const t = new Date(e.createdAt).toLocaleString("en-GB");
+          const name = nodeLabel[e.name] || e.name || `Node ${e.n}`;
 
-          const evts = Object.values(data)
-            .filter(e => typeof e.createdAt === "number")
-            .sort((a, b) => a.createdAt - b.createdAt);
+          const dP = typeof e.dP === "number" ? Math.abs(e.dP).toFixed(1) : "--";
+          const dR = typeof e.dR === "number" ? Math.abs(e.dR).toFixed(1) : "--";
 
-          if (!evts.length) {
-            resetDashboard();
-            return;
-          }
+          const ang = e.a === "R" ? `tilt ${dR}°`
+            : e.a === "PR" ? `tilt ${dP}° / ${dR}°`
+              : `tilt ${dP}°`;
 
-          const now = Date.now();
+          return e.e === "BAD"
+            ? `<div><span style="color:var(--faint)">${t}</span> · <b style="color:var(--cyan)">${name}</b> <span style="color:#e07a7a">${axisLabel[e.a] || "posture drift"}</span> <span style="color:var(--faint)">(${ang})</span></div>`
+            : `<div><span style="color:var(--faint)">${t}</span> · <b>${name}</b> <span style="color:#5fc78f">recovered</span></div>`;
+        }).join("");
 
-          // --- Alerts today: BAD count since local midnight
-          const midnight = new Date();
-          midnight.setHours(0, 0, 0, 0);
-
-          const today = evts.filter(e => e.createdAt >= midnight.getTime());
-          const badsToday = today.filter(e => e.e === "BAD");
-
-          document.getElementById("stat-alerts").textContent = badsToday.length;
-
-          // --- Time within range:
-          // Any node in BAD state means the whole system is out of range.
-          // The time window starts from today's first event.
-          if (today.length) {
-            const start = today[0].createdAt;
-            let badSet = new Set();
-            let badMs = 0;
-            let cursor = start;
-
-            for (const e of today) {
-              if (badSet.size > 0) {
-                badMs += e.createdAt - cursor;
-              }
-
-              cursor = e.createdAt;
-
-              if (e.e === "BAD") {
-                badSet.add(e.n);
-              } else {
-                badSet.delete(e.n);
-              }
-            }
-
-            if (badSet.size > 0) {
-              badMs += now - cursor;
-            }
-
-            const totalMs = Math.max(now - start, 1);
-            const pct = Math.max(0, Math.min(100, Math.round(100 * (1 - badMs / totalMs))));
-
-            document.getElementById("stat-inrange").innerHTML =
-              `${pct}<span class="unit"> %</span>`;
-
-            // --- Longest stable period:
-            // Longest continuous period today with no node in BAD state.
-            let longest = 0;
-            let prevEnd = start;
-            badSet = new Set();
-
-            for (const e of today) {
-              if (badSet.size === 0) {
-                longest = Math.max(longest, e.createdAt - prevEnd);
-              }
-
-              prevEnd = e.createdAt;
-
-              if (e.e === "BAD") {
-                badSet.add(e.n);
-              } else {
-                badSet.delete(e.n);
-              }
-            }
-
-            if (badSet.size === 0) {
-              longest = Math.max(longest, now - prevEnd);
-            }
-
-            document.getElementById("stat-stable").innerHTML =
-              `${Math.round(longest / 60000)}<span class="unit"> min</span>`;
-          } else {
-            document.getElementById("stat-inrange").innerHTML = `--<span class="unit"> %</span>`;
-            document.getElementById("stat-stable").innerHTML = `--<span class="unit"> min</span>`;
-          }
-
-          // --- 12h histogram: BAD events per hour
-          const bins = new Array(12).fill(0);
-
-          for (const e of evts) {
-            if (e.e !== "BAD") continue;
-
-            const age = now - e.createdAt;
-
-            if (age >= 0 && age < 12 * 3600e3) {
-              bins[11 - Math.floor(age / 3600e3)]++;
-            }
-          }
-
-          const max = Math.max(...bins, 1);
-
-          document.getElementById("bars").innerHTML = bins.map(v =>
-            `<span style="height:${Math.max(8, Math.round(v / max * 100))}%;${v ? 'background:linear-gradient(to top,var(--cyan-dim),var(--cyan));opacity:.85' : ''
-            }"></span>`
-          ).join("");
-
-          updateAxisLabels();
-
-          // --- Recent events list: newest first, last 10 + folded older summary
-          const recent = evts.slice(-10).reverse();
-          const older = evts.length - recent.length;
-          const olderBads = evts
-            .slice(0, Math.max(0, evts.length - 10))
-            .filter(e => e.e === "BAD").length;
-
-          document.getElementById("evt-count").textContent = `${evts.length} total`;
-
-          let html = recent.map(e => {
-            const t = new Date(e.createdAt).toLocaleString("en-GB");
-            const name = nodeLabel[e.name] || e.name || `Node ${e.n}`;
-
-            const dP = typeof e.dP === "number" ? Math.abs(e.dP).toFixed(1) : "--";
-            const dR = typeof e.dR === "number" ? Math.abs(e.dR).toFixed(1) : "--";
-
-            const ang = e.a === "R" ? `tilt ${dR}°`
-              : e.a === "PR" ? `tilt ${dP}° / ${dR}°`
-                : `tilt ${dP}°`;
-
-            return e.e === "BAD"
-              ? `<div><span style="color:var(--faint)">${t}</span> · <b style="color:var(--cyan)">${name}</b> <span style="color:#e07a7a">${axisLabel[e.a] || "posture drift"}</span> <span style="color:var(--faint)">(${ang})</span></div>`
-              : `<div><span style="color:var(--faint)">${t}</span> · <b>${name}</b> <span style="color:#5fc78f">recovered</span></div>`;
-          }).join("");
-
-          if (older > 0) {
-            html += `<div style="color:var(--faint);border-top:1px dashed var(--line);margin-top:8px;padding-top:8px">
+        if (older > 0) {
+          html += `<div style="color:var(--faint);border-top:1px dashed var(--line);margin-top:8px;padding-top:8px">
             + ${older} earlier events (${olderBads} alerts) — full history in database
           </div>`;
+        }
+
+        document.getElementById("events").innerHTML = html;
+
+        // --- N3 Personal plan (rule-based)
+        const bads = evts.filter(e => e.e === "BAD");
+
+        if (bads.length >= 3) {
+          const cnt = {};
+          const axCnt = {};
+          const hrCnt = {};
+
+          for (const e of bads) {
+            cnt[e.name] = (cnt[e.name] || 0) + 1;
+            axCnt[e.a] = (axCnt[e.a] || 0) + 1;
+
+            const h = new Date(e.createdAt).getHours();
+            hrCnt[h] = (hrCnt[h] || 0) + 1;
           }
 
-          document.getElementById("events").innerHTML = html;
+          const top = o => Object.entries(o).sort((a, b) => b[1] - a[1])[0];
 
-          // --- N3 Personal plan (rule-based)
-          const bads = evts.filter(e => e.e === "BAD");
+          const [topNode, nodeN] = top(cnt);
+          const [topAxis] = top(axCnt);
+          const [topHour] = top(hrCnt);
 
-          if (bads.length >= 3) {
-            const cnt = {};
-            const axCnt = {};
-            const hrCnt = {};
+          const axisTxt = {
+            P: "forward/backward lean",
+            R: "sideways lean",
+            PR: "combined lean"
+          };
 
-            for (const e of bads) {
-              cnt[e.name] = (cnt[e.name] || 0) + 1;
-              axCnt[e.a] = (axCnt[e.a] || 0) + 1;
+          document.getElementById("plan-pattern").innerHTML =
+            `<b style="color:var(--cyan)">${nodeLabel[topNode] || topNode}</b> drifts most often ` +
+            `(<b style="color:var(--ink)">${nodeN} of ${bads.length}</b> alerts), mainly ${axisTxt[topAxis] || "mixed"} — ` +
+            `most alerts occur around <b style="color:var(--ink)">${topHour}:00–${(+topHour + 1) % 24}:00</b>.`;
 
-              const h = new Date(e.createdAt).getHours();
-              hrCnt[h] = (hrCnt[h] || 0) + 1;
-            }
+          const tips = {
+            "Head|P": "Raise your screen closer to eye level to reduce forward head tilt.",
+            "Head|R": "Center your screen in front of you — avoid looking sideways for long periods.",
+            "Chest|P": "Sit back against the chair and let the backrest support your upper body.",
+            "Chest|R": "Keep weight even on both hips; avoid leaning on one armrest.",
+            "WaistL|P": "Adjust seat depth so your lower back stays supported.",
+            "WaistL|R": "You tend to lean left — check desk layout and mouse position.",
+            "WaistR|P": "Adjust seat depth so your lower back stays supported.",
+            "WaistR|R": "You tend to lean right — check desk layout and mouse position."
+          };
 
-            const top = o => Object.entries(o).sort((a, b) => b[1] - a[1])[0];
+          document.getElementById("plan-suggest").textContent =
+            tips[`${topNode}|${topAxis}`] || tips[`${topNode}|P`] ||
+            "Take a short movement break every 30–45 minutes.";
+        } else {
+          document.getElementById("plan-pattern").textContent =
+            "Collecting posture history…";
 
-            const [topNode, nodeN] = top(cnt);
-            const [topAxis] = top(axCnt);
-            const [topHour] = top(hrCnt);
+          document.getElementById("plan-suggest").textContent =
+            "A cue will appear once enough events are logged.";
+        }
 
-            const axisTxt = {
-              P: "forward/backward lean",
-              R: "sideways lean",
-              PR: "combined lean"
-            };
+      } catch (err) {
+        console.error("Firebase dashboard refresh failed:", err);
+        document.getElementById("events").innerHTML =
+          `<div><span style="color:#e07a7a">Firebase data could not be loaded. Check database rules and URL.</span></div>`;
+      }
+    }
 
-            document.getElementById("plan-pattern").innerHTML =
-              `<b style="color:var(--cyan)">${nodeLabel[topNode] || topNode}</b> drifts most often ` +
-              `(<b style="color:var(--ink)">${nodeN} of ${bads.length}</b> alerts), mainly ${axisTxt[topAxis] || "mixed"} — ` +
-              `most alerts occur around <b style="color:var(--ink)">${topHour}:00–${(+topHour + 1) % 24}:00</b>.`;
+    resetDashboard();
+    refresh();
+    setInterval(refresh, 15000);
+  </script>
 
-            const tips = {
-              "Head|P": "Raise your screen closer to eye level to reduce forward head tilt.",
-              "Head|R": "Center your screen in front of you — avoid looking sideways for long periods.",
-              "Chest|P": "Sit back against the chair and let the backrest support your upper body.",
-              "Chest|R": "Keep weight even on both hips; avoid leaning on one armrest.",
-              "WaistL|P": "Adjust seat depth so your lower back stays supported.",
-              "WaistL|R": "You tend to lean left — check desk layout and mouse position.",
-              "WaistR|P": "Adjust seat depth so your lower back stays supported.",
-              "WaistR|R": "You tend to lean right — check desk layout and mouse position."
-            };
+  <script>
+    /* ===== Scroll interactions: reveal, active section, spine fill ===== */
+    (function () {
+      const sections = document.querySelectorAll('.frame section');
 
-            document.getElementById("plan-suggest").textContent =
-              tips[`${topNode}|${topAxis}`] || tips[`${topNode}|P`] ||
-              "Take a short movement break every 30–45 minutes.";
-          } else {
-            document.getElementById("plan-pattern").textContent =
-              "Collecting posture history…";
+      // reveal on first entry (class added here so no-JS users see everything)
+      sections.forEach(s => s.classList.add('will-reveal'));
 
-            document.getElementById("plan-suggest").textContent =
-              "A cue will appear once enough events are logged.";
+      const revealIO = new IntersectionObserver((entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            e.target.classList.add('revealed');
+            revealIO.unobserve(e.target);
           }
+        }
+      }, { rootMargin: '0px 0px -10% 0px' });
 
-        } catch (err) {
-          console.error("Firebase dashboard refresh failed:", err);
-          document.getElementById("events").innerHTML =
-            `<div><span style="color:#e07a7a">Firebase data could not be loaded. Check database rules and URL.</span></div>`;
+      sections.forEach(s => revealIO.observe(s));
+
+      // light up the section crossing mid-viewport (node + eyebrow)
+      const activeIO = new IntersectionObserver((entries) => {
+        for (const e of entries) {
+          e.target.classList.toggle('active', e.isIntersecting);
+        }
+      }, { rootMargin: '-42% 0px -52% 0px' });
+
+      sections.forEach(s => activeIO.observe(s));
+
+      // spine fill follows scroll progress through the frame
+      const frame = document.querySelector('.frame');
+      const fill = document.querySelector('.spine-fill');
+      let ticking = false;
+
+      function drawSpine() {
+        ticking = false;
+        const r = frame.getBoundingClientRect();
+        const scrollY = window.scrollY || document.documentElement.scrollTop;
+
+        // fill starts when the frame top crosses mid-viewport and
+        // reaches 100% exactly when the page is scrolled to the bottom
+        const startY = r.top + scrollY - window.innerHeight * 0.55;
+        const endY = document.documentElement.scrollHeight - window.innerHeight;
+        const denom = Math.max(endY - startY, 1);
+        const p = Math.min(Math.max((scrollY - startY) / denom, 0), 1);
+        fill.style.transform = 'scaleY(' + p + ')';
+      }
+
+      function onScroll() {
+        if (!ticking) {
+          ticking = true;
+          requestAnimationFrame(drawSpine);
         }
       }
 
-      resetDashboard();
-      refresh();
-      setInterval(refresh, 15000);
-    </script>
+      addEventListener('scroll', onScroll, { passive: true });
+      addEventListener('resize', onScroll, { passive: true });
+      drawSpine();
+    })();
+  </script>
 
 </body>
 
