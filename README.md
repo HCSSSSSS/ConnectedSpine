@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.png" alt="Connected Spine logo" width="150">
+  <img src="logo.png" alt="Connected Spine logo" width="300">
 </p>
 
 <h1 align="center">Connected Spine</h1>
@@ -9,8 +9,14 @@
 </p>
 
 <p align="center">
-  <a href="Demo.mp4">Watch the demo</a> ·
-  <a href="https://github.com/HCSSSSSS/ConnectedSpine/tree/v1.0-dissertation">Frozen dissertation version</a>
+  <a href="https://hcssssss.github.io/ConnectedSpine/">Live dashboard</a> ·
+  <a href="Demo.mp4">Watch the demo</a>
+</p>
+
+<p align="center">
+  <img src="device.png" alt="The four Connected Spine nodes in their enclosures" width="480">
+  <br>
+  <sub>The four nodes in their 3D-printed enclosures — chest (master, with the CAL button), head, and left/right waist. Each node has its own power switch.</sub>
 </p>
 
 ## Overview
@@ -43,6 +49,8 @@ flowchart LR
     F -->|15-second polling| W[GitHub Pages dashboard]
 ```
 
+The chest S3 also carries its own BNO085 and LRA: it senses and actuates locally, so its own telemetry and feedback do not cross ESP-NOW.
+
 The communication design separates two types of traffic:
 
 - Periodic IMU telemetry uses ESP-NOW broadcast without application acknowledgement. The next sample can replace a missing packet.
@@ -61,6 +69,18 @@ The ACK confirms that a C3 received the command. It does not confirm physical LR
 
 Both firmware targets use I2C on `D4`/`D5`. The calibration button is connected between S3 pin `D7` and GND using the internal pull-up.
 
+<p align="center">
+  <img src="hardware.png" alt="Assembled Connected Spine node on the shared carrier PCB" width="480">
+  <br>
+  <sub>An assembled node: XIAO ESP32-C3, GY-BNO08X IMU breakout and DRV2605L haptic driver on the shared carrier PCB, with the LRA attached.</sub>
+</p>
+
+<p align="center">
+  <img src="pcb.png" alt="3D render of the shared carrier PCB" width="380">
+  <br>
+  <sub>The shared 45 × 65 mm carrier board (EasyEDA render): one design serves all four nodes — XIAO socket, sensor and driver headers, LRA pads, battery connector, power switch and calibration-button footprint.</sub>
+</p>
+
 ## Orientation and posture logic
 
 The firmware enables the BNO085 `GAME_ROTATION_VECTOR` report. Quaternion-derived gravity components are used to calculate pitch and roll; yaw is excluded from posture classification.
@@ -75,12 +95,10 @@ Pitch and roll use independent hysteresis states:
 | Chest | 20° | 15° | 15° | 10° |
 | Left/right waist | 20° | 15° | 15° | 10° |
 
-Events are labelled:
+Each event carries a state and an axis field:
 
-- `P`: pitch deviation
-- `R`: roll deviation
-- `PR`: combined pitch and roll deviation
-- `RECOVER`: return within both recovery thresholds
+- State — `BAD` (deviation beyond a trigger threshold) or `RECOVER` (return within both recovery thresholds)
+- Axis (meaningful for `BAD` events) — `P` pitch deviation, `R` roll deviation, `PR` combined pitch and roll deviation
 
 ## Timing and reliability
 
@@ -110,6 +128,9 @@ ConnectedSpine/
 ├── uploader.py           # BLE-to-Firebase uploader
 ├── index.html            # Near-real-time dashboard
 ├── Demo.mp4              # Prototype demonstration
+├── device.png            # Device overview photo
+├── hardware.png          # Assembled node photo
+├── pcb.png               # Carrier-board render
 └── logo.png
 ```
 
@@ -200,13 +221,15 @@ The Firebase record adds the readable node name and a server timestamp:
 
 ## Dashboard
 
+A hosted instance runs at [hcssssss.github.io/ConnectedSpine](https://hcssssss.github.io/ConnectedSpine/).
+
 The static dashboard in `index.html` reads up to the latest 500 Firebase events and refreshes every 15 seconds. It displays:
 
 - recent BAD and RECOVER events;
 - alert count;
 - derived time within range;
 - longest stable duration;
-- a 12-bin event histogram; and
+- a 12-bin alert histogram (BAD events only); and
 - rule-based suggestions derived from the most frequent node, axis, and hour.
 
 The interface is near-real-time rather than continuously streamed. Its “latest session” represents events from the calendar date of the latest record, beginning with the first retrieved event on that date; the current schema does not contain an independent session ID.
